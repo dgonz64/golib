@@ -18,6 +18,29 @@ func finishedCityForTest(s *State) int64 {
 	return cityID
 }
 
+func assertCityForceAtFactory(t *testing.T, s *State, party Party) {
+	t.Helper()
+	city := s.Cities[party.City]
+	var factory Enemy
+	for _, id := range city.BuildingIDs {
+		if e := s.Enemies[id]; e.Kind == EnemyCityFactory {
+			factory = e
+		}
+	}
+	if factory.ID == 0 {
+		t.Fatal("the city has no military factory")
+	}
+	for _, member := range partyMembers(s, party.ID) {
+		gap := math.Hypot(member.X-factory.X, member.Y-factory.Y)
+		if gap > 35 {
+			t.Fatalf("%s spawned %.1f m from the factory", member.Kind, gap)
+		}
+		if member.Kind != EnemyRaider && gap > 0.001 {
+			t.Fatalf("%s did not spawn at the factory", member.Kind)
+		}
+	}
+}
+
 func assertCityBuildsPylonBeforeNexus(
 	t *testing.T,
 	s *State,
@@ -694,6 +717,7 @@ func TestCityBattalionsAssembleOneUnitAtATime(t *testing.T) {
 				t.Fatalf("sortie %d built %d vehicles after unit %d",
 					sortie, got, unit)
 			}
+			assertCityForceAtFactory(t, s, party)
 			city = s.Cities[cityID]
 			spentOil := citySortieOil * float64(unit) / float64(wantSize)
 			spentLilac := citySortieLilac * float64(unit) /
@@ -826,8 +850,9 @@ func TestReturnedFullCityForceUnloadsThenAttacksAgain(t *testing.T) {
 	}
 	party.Stage = StageLeave
 	s.Parties[partyID] = party
-	stepParty(s, party)
-	if s.Parties[partyID].Stage != StageUnload {
+	if !tickUntil(s, 10*60, func() bool {
+		return s.Parties[partyID].Stage == StageUnload
+	}) {
 		t.Fatalf("returned force is at stage %q, want unload",
 			s.Parties[partyID].Stage)
 	}
@@ -904,8 +929,9 @@ func TestDamagedCityForceUnloadsThenCompletesItsSquad(t *testing.T) {
 	}
 	party.Stage = StageLeave
 	s.Parties[partyID] = party
-	stepParty(s, party)
-	if s.Parties[partyID].Stage != StageUnload {
+	if !tickUntil(s, 10*60, func() bool {
+		return s.Parties[partyID].Stage == StageUnload
+	}) {
 		t.Fatalf("damaged force is at stage %q, want unload",
 			s.Parties[partyID].Stage)
 	}
@@ -927,6 +953,13 @@ func TestDamagedCityForceUnloadsThenCompletesItsSquad(t *testing.T) {
 	}
 	for _, e := range partyMembers(s, partyID) {
 		if e.Kind == EnemyArtillery {
+			for _, id := range city.BuildingIDs {
+				factory := s.Enemies[id]
+				if factory.Kind == EnemyCityFactory &&
+					math.Hypot(e.X-factory.X, e.Y-factory.Y) > 0.001 {
+					t.Fatal("replacement artillery did not spawn at the factory")
+				}
+			}
 			return
 		}
 	}
@@ -937,6 +970,9 @@ func TestDamagedCityForceRebuildsItsAntimistCrawler(t *testing.T) {
 	s := newGame()
 	cityID := s.foundCity(4500, 2500, 0)
 	city := s.Cities[cityID]
+	for range cityBuildOrder {
+		s.finishCityBuilding(&city)
+	}
 	city.Oil, city.Lilac, city.Sorties = 500, 1000, 2
 	s.Cities[cityID] = city
 	s.spawnCitySortie(city)
@@ -955,6 +991,7 @@ func TestDamagedCityForceRebuildsItsAntimistCrawler(t *testing.T) {
 	if !s.buildCityPartyUnit(&party) {
 		t.Fatal("the city could not replace its lost antimist crawler")
 	}
+	assertCityForceAtFactory(t, s, party)
 	crawlers, bubbles := 0, 0
 	for _, member := range partyMembers(s, partyID) {
 		if member.Kind == EnemyCrawler {
@@ -1086,6 +1123,7 @@ func TestDevelopmentActionsFinishOneCityStepAndReleaseItsForce(t *testing.T) {
 	if party.Stage != StageRaid || party.Wait != 0 {
 		t.Fatalf("finished force did not attack immediately: %+v", party)
 	}
+	assertCityForceAtFactory(t, s, party)
 	Apply(s, DevSendCityBattalion{})
 	if s.Parties[party.ID].Wait != 0 {
 		t.Fatal("send battalion did not release its wait")

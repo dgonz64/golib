@@ -25,6 +25,9 @@ independent numbered colonies in its existing SQLite database, with the
 legacy save preserved as slot 1 and a scrollable list showing save dates
 and simulated play time. Play remains the first action before any save.
 
+On 2026-10-02, Niebla's rival-city vehicles began spawning at their military
+factory, including unit-by-unit assembly, replacements and dev-tool forces.
+
 | Area | State |
 | --- | --- |
 | `golib` CLI: `setup`, `doctor`, `clean`, `help` | Done |

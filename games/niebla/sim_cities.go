@@ -386,6 +386,7 @@ func cityBuildingSpec(kind BuildingKind) cityBuildingSpecValue {
 }
 
 func (s *State) spawnCitySortie(city City) {
+	x, y := cityBuildingPosition(city, cityStageForEnemy(EnemyCityFactory))
 	if city.ID == s.Raids.PressureCity && city.Sorties == 1 {
 		s.Raids.PressureSortieStarted = true
 	}
@@ -397,7 +398,7 @@ func (s *State) spawnCitySortie(city City) {
 	p := Party{
 		ID: partyID, Stage: StageRaid, City: city.ID,
 		Siphon: raidSiphonTicks, Artillery: artillery,
-		CampX: city.X, CampY: city.Y,
+		CampX: x, CampY: y,
 		EntryX: city.X, EntryY: city.Y,
 		Size: size,
 	}
@@ -411,7 +412,7 @@ func (s *State) spawnCitySortie(city City) {
 		s.NextID++
 		s.Enemies[id] = Enemy{
 			ID: id, Kind: EnemyCrawler, Party: partyID, City: city.ID,
-			X: city.X, Y: city.Y,
+			X: x, Y: y,
 			Health: enemySpecOf(EnemyCrawler).health,
 		}
 		formationStart = 1
@@ -423,7 +424,7 @@ func (s *State) spawnCitySortie(city City) {
 		s.Enemies[id] = Enemy{
 			ID: id, Kind: EnemyRaider, Party: partyID,
 			City: city.ID,
-			X:    city.X + dx, Y: city.Y + dy,
+			X:    x + dx, Y: y + dy,
 			Health: enemySpecOf(EnemyRaider).health,
 		}
 	}
@@ -433,7 +434,7 @@ func (s *State) spawnCitySortie(city City) {
 		s.Enemies[id] = Enemy{
 			ID: id, Kind: EnemyArtillery, Party: partyID,
 			City: city.ID,
-			X:    city.X, Y: city.Y,
+			X:    x, Y: y,
 			Health: enemySpecOf(EnemyArtillery).health,
 		}
 	}
@@ -441,6 +442,7 @@ func (s *State) spawnCitySortie(city City) {
 }
 
 func (s *State) startCitySortie(city City) {
+	x, y := cityBuildingPosition(city, cityStageForEnemy(EnemyCityFactory))
 	if s.Parties == nil {
 		s.Parties = map[int64]Party{}
 	}
@@ -451,7 +453,7 @@ func (s *State) startCitySortie(city City) {
 	s.NextID++
 	s.Parties[partyID] = Party{
 		ID: partyID, Stage: StageBuild, City: city.ID,
-		CampX: city.X, CampY: city.Y,
+		CampX: x, CampY: y,
 		EntryX: city.X, EntryY: city.Y,
 		Wait: cityUnitBuildTicks,
 		Size: count + 1, Artillery: artillery,
@@ -500,7 +502,7 @@ func (s *State) buildCityPartyUnit(party *Party) bool {
 	city.Lilac -= unitLilac
 	s.Cities[city.ID] = city
 
-	x, y := city.X, city.Y
+	x, y := cityBuildingPosition(city, cityStageForEnemy(EnemyCityFactory))
 	if kind == EnemyRaider {
 		dx, dy := formationOffset(len(partyMembers(s, party.ID)))
 		x += dx

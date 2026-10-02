@@ -303,7 +303,7 @@ sends `devFastTicks` ticks an update instead of one until pressed again;
 the simulation advances identically, only sooner.
 
 To inspect a city assembling its first battalion, with one vehicle built and
-the next taking 30 seconds:
+the next taking 30 seconds, both appearing at the military factory:
 
 ```text
 NIEBLA_CITY_ASSEMBLY_SHOT_STATE=../../build/niebla/city-assembly.json \

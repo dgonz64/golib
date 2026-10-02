@@ -353,8 +353,9 @@ route deterministic.
 
 Once the factory and stores are ready, the city builds its next battalion
 one vehicle at a time, taking `cityUnitBuildTicks` 30 s per vehicle and
-paying each vehicle's share of the sortie cost as it completes. It waits at
-the city until every vehicle is ready, then attacks with the whole force.
+paying each vehicle's share of the sortie cost as it completes. Vehicles
+appear in formation at the military factory, including replacements for
+lost vehicles, and wait there until the whole force is ready to attack.
 The first battalion has a crawler and one raider. Each new battalion adds
 one raider until it has four raiders and five vehicles total. Only the next
 battalions replace the crawler with mobile artillery, keeping the total at
@@ -903,6 +904,8 @@ from the state's tick), `techCalloutW` is 280 px and `techUsedVeil` is
 In `sim_cities.go`, `cityBuildTicks` is 2700 ticks (45 s) per building,
 `cityUnitBuildTicks` is 1800 ticks (30 s) per vehicle and
 `citySortieCooldownTicks` is 5400 ticks (90 s) after a full force returns.
+Vehicle spawn positions use the military factory's rotated city-layout
+position plus the existing formation offsets.
 `cityAnnouncementTicks` is 3600 ticks (one minute); the city
 status, founding report and offscreen arrow share that deadline. Other
 reports last `reportShowTicks` 900 ticks (15 s). In `guides.go`, offscreen
@@ -1096,6 +1099,8 @@ all four probe policies.
 
 ## Changelog
 
+- 2026-10-02: rival vehicles now appear at their city's military factory
+  instead of its pylon, during assembly, replacement and dev-tool spawning.
 - 2026-10-01: general status and rival notices now grow as the drawing
   resolution gets smaller, in 15/18/20-pixel steps capped at 20. The notices
   and dev tools follow the resulting wrapped HUD height.
