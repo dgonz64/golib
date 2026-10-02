@@ -184,6 +184,7 @@ const (
 	ReportCityIncoming ReportKind = "cityincoming"
 	ReportCityBuilding ReportKind = "citybuilding"
 	ReportCityCrawler  ReportKind = "citycrawler"
+	ReportReturned     ReportKind = "returned"
 )
 
 // Report is one line of news, written by the simulation and worded by
@@ -585,16 +586,13 @@ func stepParty(s *State, p Party) {
 				s.endParty(p, ReportLeft, stolen, p.EntryX, p.EntryY)
 				return
 			}
-			if p.City != 0 && stolen > 0 {
-				city, ok := s.Cities[p.City]
-				if ok {
-					city.NextSortie = s.Ticks
-					s.Cities[city.ID] = city
-				}
+			if p.City != 0 {
+				city := s.Cities[p.City]
+				city.NextSortie = s.Ticks
+				s.Cities[city.ID] = city
 				p.Stage = StageUnload
-				s.Parties[p.ID] = p
-				s.report(ReportLeft, stolen, p.EntryX, p.EntryY)
-				return
+				s.report(ReportReturned, stolen, p.EntryX, p.EntryY)
+				break
 			}
 			for _, e := range members {
 				delete(s.Enemies, e.ID)

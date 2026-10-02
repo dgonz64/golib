@@ -323,6 +323,16 @@ NIEBLA_CITY_SHOT_STATE=../../build/niebla/city.json \
   --input "Enter@1 Mouse@3:880,492 MouseWheel@4:3"
 ```
 
+To inspect an empty-handed battalion back at its city, with both vehicles
+still present and the return notice visible:
+
+```text
+NIEBLA_CITY_RETURN_SHOT_STATE=../../build/niebla/city-return.json \
+  ./golib go -C games/niebla test -run TestWriteCityReturnShotState
+./golib shot niebla 60 --save build/niebla/city-return.json \
+  --input "Enter@1"
+```
+
 To capture a building falling to a final bullet hit:
 
 ```text
@@ -855,8 +865,12 @@ the force reaches five vehicles, later battalions replace the crawler with
 artillery and remain at five. A force that returns with oil unloads at
 `cityUnloadPerSecond` 3 L/s per living vehicle. A full squad waits
 `citySortieCooldownTicks` 90 seconds before the city starts its next
-assembly. A damaged squad builds one replacement every 30 seconds; an empty
-or destroyed force waits a minute before assembling its replacement.
+assembly. A damaged squad builds one replacement every 30 seconds; a destroyed
+force waits a minute before assembling its replacement. Empty-handed city
+returns keep every survivor and enter the same unload/rest/replacement stages.
+Without a colony tank holding at least 1 L, `raidTarget` finds no destination
+and the force turns back immediately. `ReportReturned` distinguishes coming
+home from `ReportLeft`, which still describes departures from the region.
 `movingParty` permits one active party region-wide; other cities wait for it
 to return, unload or be lost.
 

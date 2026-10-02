@@ -27,6 +27,8 @@ and simulated play time. Play remains the first action before any save.
 
 On 2026-10-02, Niebla's rival-city vehicles began spawning at their military
 factory, including unit-by-unit assembly, replacements and dev-tool forces.
+Empty-handed city returns now preserve surviving vehicles for rest or
+replacement, with a notice distinguishing a return from leaving the region.
 
 | Area | State |
 | --- | --- |

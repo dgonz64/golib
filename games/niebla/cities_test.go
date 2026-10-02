@@ -856,6 +856,10 @@ func TestReturnedFullCityForceUnloadsThenAttacksAgain(t *testing.T) {
 		t.Fatalf("returned force is at stage %q, want unload",
 			s.Parties[partyID].Stage)
 	}
+	if report := lastReport(s); report.Kind != ReportReturned ||
+		math.Abs(report.Oil-24) > 0.001 {
+		t.Fatalf("loaded return reported %+v, want returned with 24 L", report)
+	}
 	oil := s.Cities[cityID].Oil
 	runTicks(s, 59)
 	want := 59 * (2*cityUnloadPerSecond/60 + cityOilExtractPerSecond/60)
@@ -886,6 +890,101 @@ func TestReturnedFullCityForceUnloadsThenAttacksAgain(t *testing.T) {
 	if got := len(partyMembers(s, partyID)); got != party.Size {
 		t.Fatalf("the force has %d members after unloading, want %d",
 			got, party.Size)
+	}
+}
+
+func TestEmptyHandedCityForceKeepsItsSurvivors(t *testing.T) {
+	for _, scenario := range []string{
+		"dry at launch", "dry en route", "missing raider",
+	} {
+		t.Run(scenario, func(t *testing.T) {
+			s := newGame()
+			noRivals(s)
+			cityID := finishedCityForTest(s)
+			city := s.Cities[cityID]
+			city.Oil, city.Lilac, city.Sorties = 500, 1000, 1
+			s.Cities[cityID] = city
+			s.Raids.PressureCity = cityID
+			s.spawnCitySortie(city)
+			partyID := sortedPartyIDs(s)[0]
+			if scenario == "dry en route" {
+				runTicks(s, 60)
+				if s.Parties[partyID].Stage != StageRaid {
+					t.Fatal("the force never started toward the colony")
+				}
+			}
+			if scenario == "missing raider" {
+				for _, e := range partyMembers(s, partyID) {
+					if e.Kind == EnemyRaider {
+						s.killEnemy(e.ID)
+					}
+				}
+			}
+			s.Stock.Oil = 0
+			survivors := partyMembers(s, partyID)
+			if !tickUntil(s, 20*60, func() bool {
+				return s.Parties[partyID].Stage == StageUnload
+			}) {
+				t.Fatalf("empty-handed force vanished or failed to return: %+v",
+					s.Parties[partyID])
+			}
+			returnedAt := s.Ticks
+			if report := lastReport(s); report.Kind != ReportReturned ||
+				report.Oil != 0 {
+				t.Fatalf("empty-handed return reported %+v", report)
+			}
+			if !s.Raids.PressureSortieResolved {
+				t.Fatal("the empty-handed return did not resolve the first force")
+			}
+			runTicks(s, 1)
+			party := s.Parties[partyID]
+			wantStage, wantWait := StageRegroup, int64(citySortieCooldownTicks)
+			if scenario == "missing raider" {
+				wantStage, wantWait = StageRebuild, cityUnitBuildTicks
+			}
+			if party.Stage != wantStage || party.Wait != wantWait {
+				t.Fatalf("empty-handed return entered %+v, want %s for %d ticks",
+					party, wantStage, wantWait)
+			}
+			runTicks(s, int(wantWait)-1)
+			if s.Parties[partyID].Stage != wantStage {
+				t.Fatal("the force attacked before its return wait ended")
+			}
+			s.Stock.Oil = 100
+			runTicks(s, 1)
+			if s.Parties[partyID].Stage != StageRaid {
+				t.Fatal("the returned force did not attack again")
+			}
+			if len(partyMembers(s, partyID)) != party.Size {
+				t.Fatal("the returned force did not keep or restore its ranks")
+			}
+			for _, before := range survivors {
+				after, exists := s.Enemies[before.ID]
+				if !exists || after.Party != partyID ||
+					after.Health != before.Health {
+					t.Fatalf("return replaced or damaged survivor %d: %+v",
+						before.ID, after)
+				}
+			}
+			t.Logf("returned empty-handed after %.1f seconds",
+				float64(returnedAt)/60)
+		})
+	}
+}
+
+func TestCityReturnReportDescribesSurvivingForces(t *testing.T) {
+	for _, scenario := range []struct {
+		oil  float64
+		want string
+	}{
+		{0, "The rival force returned to its city empty-handed."},
+		{24, "The rival force returned to its city with [oil]24 L[/]."},
+	} {
+		report := Report{Kind: ReportReturned, Oil: scenario.oil}
+		if got := reportWords(report); got != scenario.want {
+			t.Errorf("return with %.0f L says %q, want %q",
+				scenario.oil, got, scenario.want)
+		}
 	}
 }
 
@@ -1205,6 +1304,32 @@ func TestWriteCityAssemblyShotState(t *testing.T) {
 	stepCity(s, &city)
 	s.Cities[cityID] = city
 	runTicks(s, int(cityUnitBuildTicks))
+	writeCityShotState(t, path, s)
+}
+
+func TestWriteCityReturnShotState(t *testing.T) {
+	path := os.Getenv("NIEBLA_CITY_RETURN_SHOT_STATE")
+	if path == "" {
+		t.Skip("set NIEBLA_CITY_RETURN_SHOT_STATE to write a return state")
+	}
+	s := newGame()
+	noRivals(s)
+	cx, cy := tileCenterUnits(coreCol, coreRow)
+	cityID := s.foundCity(cx+900, cy, 0)
+	city := s.Cities[cityID]
+	for range cityBuildOrder {
+		s.finishCityBuilding(&city)
+	}
+	city.Oil, city.Lilac, city.Sorties = 500, 1000, 1
+	s.Cities[cityID] = city
+	s.Stock.Oil = 0
+	s.spawnCitySortie(city)
+	partyID := sortedPartyIDs(s)[0]
+	if !tickUntil(s, 10*60, func() bool {
+		return s.Parties[partyID].Stage == StageRegroup
+	}) {
+		t.Fatal("the empty-handed force did not return and rest")
+	}
 	writeCityShotState(t, path, s)
 }
 

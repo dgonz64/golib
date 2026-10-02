@@ -353,6 +353,13 @@ func reportWords(r Report) string {
 		}
 		return fmt.Sprintf("The raiders got away with [oil]%s[/].",
 			si(math.Round(r.Oil), "L"))
+	case ReportReturned:
+		if r.Oil < 1 {
+			return "The rival force returned to its city empty-handed."
+		}
+		return fmt.Sprintf(
+			"The rival force returned to its city with [oil]%s[/].",
+			si(math.Round(r.Oil), "L"))
 	case ReportDestroyed:
 		return "The rivals are gone to the last vehicle. What they carried lies where they fell."
 	case ReportSettled:

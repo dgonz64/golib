@@ -366,9 +366,13 @@ a shot cannot damage the core. The colony's own artillery keeps its 1.5 km
 reach. A force that returns with stolen oil unloads
 at `cityUnloadPerSecond` 3 L/s per vehicle. A complete force then rests
 for `citySortieCooldownTicks` 90 s before the city starts assembling its
-next one. A damaged force builds each missing vehicle in 30 s; an empty or
-destroyed force waits one minute before assembling its next force the same
-way. Only one moving party can be in the region at a time; other cities
+next one. A damaged force builds each missing vehicle in 30 s; a destroyed
+force waits one minute before assembling its next force the same way.
+Returning empty-handed keeps the surviving vehicles and uses the same rest
+or replacement rules. If no colony tank holds at least 1 L, a force turns
+back immediately, even just after leaving its factory. The return notice
+states that the force is back at its city, rather than gone from the region.
+Only one moving party can be in the region at a time; other cities
 wait their turn. The first force can make the trip in calm weather while it
 is within the fog line; artillery keeps the formation repulsed through
 swells. The route is a straight line for now.
@@ -651,9 +655,10 @@ For whoever works on the game, not for the player: in the region, hold Control a
   crawler and one raider, adding raiders up to four. Once they reach five
   vehicles, later battalions replace the crawler with mobile artillery.
   Full forces rest 90 seconds after unloading before the next assembly.
-  Damaged forces replace one vehicle every 30 seconds; empty or destroyed
-  forces wait a minute before assembly. Later cities arrive on the city
-  clock. Structures can be destroyed, wrecks drop loot, and the
+  Damaged forces replace one vehicle every 30 seconds; destroyed forces
+  wait a minute before assembly. Empty-handed survivors stay at their city
+  and rest or replace losses like a force that brought oil. Later cities arrive
+  on the city clock. Structures can be destroyed, wrecks drop loot, and the
   colony's artillery shells visible rival targets for lilac and oil (see
   [The rivals](#the-rivals)).
 - A war factory builds troopers, up to six, and they are its squad: one
@@ -1099,6 +1104,10 @@ all four probe policies.
 
 ## Changelog
 
+- 2026-10-02: fixed city forces disappearing on an empty-handed return.
+  Survivors now unload, rest or replace losses regardless of stolen oil;
+  return notices distinguish coming home from leaving the region. The first
+  sortie's resolution is recorded on arrival, with or without oil.
 - 2026-10-02: rival vehicles now appear at their city's military factory
   instead of its pylon, during assembly, replacement and dev-tool spawning.
 - 2026-10-01: general status and rival notices now grow as the drawing
