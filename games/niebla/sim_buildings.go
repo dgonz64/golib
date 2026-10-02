@@ -168,8 +168,8 @@ func buildableGround(col, row int) bool {
 
 // canPlace reports whether a kind may be marked on a cell: ground that
 // takes it - the pump is the one kind that stands on oil instead, on a
-// pool with oil left in it and no pump yet - a flat cell, nothing else
-// on it, and a bubble over it, except for pumps and protectors. A pump
+// pool with oil left in it and no pump yet - a flat cell, no building or
+// site on it, and a bubble over it, except for pumps and protectors. A pump
 // can be raised outside a bubble, but the mites will digest it.
 func canPlace(s *State, kind BuildingKind, col, row int) bool {
 	if col < 0 || row < 0 || col >= regionCellCols || row >= regionCellRows {
@@ -194,9 +194,6 @@ func canPlace(s *State, kind BuildingKind, col, row int) bool {
 		if job.Col == col && job.Row == row {
 			return false // a job already raises something here
 		}
-	}
-	if _, littered := pileAt(s, col, row); littered {
-		return false // loose items hold the cell until they are hauled off
 	}
 	x, y := cellCenterUnits(col, row)
 	return kind == BuildingProtector || kind == BuildingPump ||

@@ -291,8 +291,8 @@ func TestExternalPumpIsEatenUnlessProtected(t *testing.T) {
 		math.Abs(pile.Lilac-pumpCostLilac*wreckRefund) > 0.1 {
 		t.Errorf("the pump left pile %v, found %v", pile, ok)
 	}
-	if canPlace(s, BuildingPump, col, row) {
-		t.Error("the wreck does not hold the pump cell")
+	if !canPlace(s, BuildingPump, col, row) {
+		t.Error("the wreck blocks rebuilding the pump")
 	}
 }
 

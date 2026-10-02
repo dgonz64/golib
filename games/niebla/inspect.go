@@ -56,6 +56,7 @@ const (
 	buttonMechanic      = "build mechanic"
 	buttonOrder         = "give order"
 	buttonBuildPump     = "build pump"
+	buttonBuildHere     = "build here"
 	buttonLayPipe       = "lay pipe"
 	buttonRemovePipe    = "remove"
 	buttonBackToDeposit = "back to deposit"
@@ -159,7 +160,13 @@ func tooltipLayoutForPage(
 	if focusedThing != "" {
 		for _, thing := range things {
 			if thing.ID == focusedThing {
-				things = []Thing{thing}
+				focused := []Thing{thing}
+				for _, other := range things {
+					if other.Type == TypePile && other.ID != thing.ID {
+						focused = append(focused, other)
+					}
+				}
+				things = focused
 				break
 			}
 		}
@@ -302,6 +309,11 @@ func tooltipLayoutForThings(
 				})
 			}
 			continue
+		}
+		if thing.Type == TypePile && buildMenuAvailable(s, col, row) {
+			t.rows = append(t.rows, tooltipRow{
+				thing: thing, button: buttonBuildHere,
+			})
 		}
 		if end, ok := pipeEndOf(s, thing); ok {
 			for _, p := range pipesOf(s, end) {

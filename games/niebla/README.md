@@ -820,15 +820,34 @@ state at once and `CancelJob` a site out of the queue. What it was made
 of falls on its cell as one `Pile` (`State.Piles`, by ID): the
 blueprint's cost times `demolishRefund`, the cost of the unit a factory
 was building, and what the stores lose the roof for (`spillOverflow`).
-A pile holds its cell against `canPlace` until its last item leaves,
-which deletes it. A protector can't go while it alone shelters another
-building or a site (`canDemolish`, on `shelteredWithout`). Builders and
+A pile does not block `canPlace`: it can share a cell with a building or
+site, and construction preserves its contents and hauling access. Its last
+item deletes it. A ground pile's card offers `build here` if any radial
+blueprint is placeable, while an oil pool's `build pump` ignores salvage.
+Pump-focused panels also retain the shared pile's card. `pilePosition` moves
+the drawing toward the front corner without changing the saved cell;
+`pileDrawScale` applies wear before the minimum icon-size factor, so decaying
+piles never grow and loading keeps their scale. A protector can't go while
+it alone shelters another building or a site (`canDemolish`, on
+`shelteredWithout`). Builders and
 unassigned workers pick piles up after construction and before their posts:
 the nearest pile that holds something the stores have free room for
 (`freeRoom` counts what is already on its way home, so nobody loads what
 won't fit), one kind per trip, lilac first, loading for `robotLoadTicks`;
 assigned workers skip this task and stay at their posts. `Robot.Pile` says
 which pile a loading robot stands at, 0 at its post.
+
+To inspect a rebuilt pump with half-worn salvage still on its cell:
+
+```text
+NIEBLA_REBUILT_PUMP_SHOT_STATE=../../build/niebla/rebuilt-pump.json \
+  ./golib go -C games/niebla test \
+  -run TestWriteRebuiltPumpShotState -v
+./golib shot niebla 80 120 --save build/niebla/rebuilt-pump.json \
+  --input "Enter@1 Mouse@2:640,322 MouseWheel@3:5 MouseLeft@85"
+```
+
+Use the pump position printed by the fixture if its generated cell changes.
 
 ### The rivals
 

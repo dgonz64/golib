@@ -139,7 +139,7 @@ func (f *miteField) update(s *State, dt float32) {
 	}
 	for _, id := range sortedPileIDs(s) {
 		p := s.Piles[id]
-		x, y := cellCenterUnits(p.Col, p.Row)
+		x, y := pilePosition(s, p)
 		h := f.host(fmt.Sprintf("pile:%d", id), x, y, dt)
 		scale := pileMiteScale(p)
 		h.Across, h.Height = 14*scale, 6*scale

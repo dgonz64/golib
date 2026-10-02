@@ -119,6 +119,17 @@ func radialOffered(s *playScene, kind BuildingKind) bool {
 		canPlace(s.state, kind, s.radialCol, s.radialRow)
 }
 
+func buildMenuAvailable(s *State, col, row int) bool {
+	for _, group := range buildGroups {
+		for _, kind := range groupMembers[group] {
+			if kindUnlocked(s, kind) && canPlace(s, kind, col, row) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // radialGroupLayout lays the first ring out around the menu's cell:
 // every group that holds a blueprint the colony could raise here. The
 // group reads washed out while nothing in it could be paid.

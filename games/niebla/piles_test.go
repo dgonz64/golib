@@ -83,8 +83,8 @@ func TestDemolishingLeavesTheCostAsAPileAndTheRobotsHaulItHome(t *testing.T) {
 		t.Errorf("the pile holds %v kg and %v L, want the charger's whole cost",
 			p.Lilac, p.Oil)
 	}
-	if canPlace(s, BuildingSilo, col, row) {
-		t.Error("a cell with a pile on it took a marking")
+	if !canPlace(s, BuildingSilo, col, row) {
+		t.Error("a cell with a pile on it refused a marking")
 	}
 	if !tickUntil(s, 60*600, func() bool { return len(s.Piles) == 0 }) {
 		t.Fatalf("the robots never cleared the pile: %v", s.Piles)
@@ -317,6 +317,183 @@ func TestPilesSurviveASaveAndOldSavesTakeThem(t *testing.T) {
 	old.dropPile(col, row, 0, 10)
 	if _, ok := pileAt(old, col, row); !ok {
 		t.Error("a state with no pile table couldn't take a pile")
+	}
+}
+
+func TestDestroyedPumpCanBeRebuiltBeforeItsSalvageIsCollected(t *testing.T) {
+	s := newGame()
+	noRivals(s)
+	arriveAll(s)
+	pool := safePool(t)
+	pump := pumpOn(t, s, pool)
+	s.hurtBuilding(pump.ID, buildingHealth(BuildingPump))
+	pile, found := pileAt(s, pump.Col, pump.Row)
+	if !found || pile.Lilac != pumpCostLilac*wreckRefund {
+		t.Fatalf("the destroyed pump left %+v, want its salvage", pile)
+	}
+	scene := newPlayScene(s)
+	panel := tooltipLayout(s, scene.camera, pump.Col, pump.Row, nil)
+	button := panel.findButton(buttonBuildPump)
+	if button == nil || button.disabled {
+		t.Fatal("salvage hides or disables the pool's build pump button")
+	}
+	scene.pickedCol, scene.pickedRow = pump.Col, pump.Row
+	before := s.Stock.Lilac
+	scene.pressButton(*button)
+	if len(s.Jobs) != 1 || s.Stock.Lilac != before-pumpCostLilac {
+		t.Fatal("rebuilding over salvage did not mark and pay for one pump")
+	}
+	Apply(s, MarkBuilding{
+		Kind: BuildingPump, Col: pump.Col, Row: pump.Row,
+	})
+	if len(s.Jobs) != 1 {
+		t.Fatal("the same pool took a second pump site")
+	}
+	for range buildingWorkTicks {
+		s.workJob(0)
+	}
+	if _, stands := buildingAt(s, pump.Col, pump.Row); !stands {
+		t.Fatal("the replacement pump never rose over its salvage")
+	}
+	if got := s.Piles[pile.ID]; got != pile {
+		t.Fatalf("construction changed the salvage: %+v, want %+v", got, pile)
+	}
+	data, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var loaded State
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		t.Fatal(err)
+	}
+	loaded.enterRegion()
+	if got := loaded.Piles[pile.ID]; got != pile {
+		t.Fatalf("loading changed the shared pile: %+v", got)
+	}
+	if canPlace(&loaded, BuildingPump, pump.Col, pump.Row) {
+		t.Fatal("a rebuilt pool took a second pump")
+	}
+	rebuilt, _ := buildingAt(&loaded, pump.Col, pump.Row)
+	panel = tooltipLayoutForSelection(
+		&loaded, scene.camera, pump.Col, pump.Row, nil,
+		buildingThing(rebuilt).ID,
+	)
+	pileCard := false
+	for _, row := range panel.rows {
+		if row.title && row.thing.Type == TypePile {
+			pileCard = true
+		}
+	}
+	if !pileCard {
+		t.Fatal("selecting the rebuilt pump hides its loose items card")
+	}
+	if !tickUntil(&loaded, 60*600, func() bool {
+		return len(loaded.Piles) == 0
+	}) {
+		t.Fatal("the builder cannot collect salvage under the rebuilt pump")
+	}
+}
+
+func TestLooseItemsCardBuildsWithoutDiscardingItsContents(t *testing.T) {
+	scene := newPlayScene(newGame())
+	arriveAll(scene.state)
+	col, row := groundNearCore()
+	scene.state.dropPile(col, row, 20, 80)
+	pile, _ := pileAt(scene.state, col, row)
+	scene.pickCellOrBuild(col, row, true)
+	if !scene.picked || scene.radial {
+		t.Fatal("a pile click no longer inspects its contents")
+	}
+	panel := scene.inspectionPanel()
+	button := panel.findButton(buttonBuildHere)
+	if button == nil {
+		t.Fatal("the loose items card offers no way to build on its cell")
+	}
+	scene.pressButton(*button)
+	if !scene.radial || scene.picked {
+		t.Fatal("build here did not open the cell's build menu")
+	}
+	scene.radialGroup, scene.radialLevel = groupLogistics, 1
+	for _, item := range radialLeafLayout(scene) {
+		if item.kind == BuildingSilo {
+			scene.pickRadial(item.x, item.y)
+			break
+		}
+	}
+	if len(scene.state.Jobs) != 1 {
+		t.Fatal("the build menu did not mark the replacement silo")
+	}
+	if got := scene.state.Piles[pile.ID]; got != pile {
+		t.Fatal("building on loose items discarded or changed them")
+	}
+	if buildMenuAvailable(scene.state, col, row) {
+		t.Fatal("an occupied site still offers another building")
+	}
+}
+
+func TestPileWearNeverEnlargesItsDrawingAndLoadingKeepsItsScale(t *testing.T) {
+	s := newGame()
+	col, row := groundNearCore()
+	s.dropPile(col, row, 20, 80)
+	pile, _ := pileAt(s, col, row)
+	for _, zoom := range []float32{1, 2, 4, 8, 16, 32} {
+		previous := pileDrawScale(pile, zoom)
+		for _, wear := range []float64{0.25, 0.5, 0.9} {
+			worn := pile
+			worn.MiteTicks = wear * mitePileLifetimeTicks
+			got := pileDrawScale(worn, zoom)
+			if got > previous+0.0001 {
+				t.Fatalf("zoom %v: wear %v enlarged the pile from %v to %v",
+					zoom, wear, previous, got)
+			}
+			previous = got
+			s.Piles[pile.ID] = worn
+			data, err := json.Marshal(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var loaded State
+			if err := json.Unmarshal(data, &loaded); err != nil {
+				t.Fatal(err)
+			}
+			loaded.enterRegion()
+			if back := pileDrawScale(loaded.Piles[pile.ID], zoom); back != got {
+				t.Fatalf("loading enlarged a pile from %v to %v", got, back)
+			}
+		}
+	}
+}
+
+func TestWriteRebuiltPumpShotState(t *testing.T) {
+	path := os.Getenv("NIEBLA_REBUILT_PUMP_SHOT_STATE")
+	if path == "" {
+		t.Skip("set NIEBLA_REBUILT_PUMP_SHOT_STATE to inspect pump salvage")
+	}
+	s := newGame()
+	noRivals(s)
+	arriveAll(s)
+	s.Robots = map[int64]Robot{}
+	pump := pumpOn(t, s, safePool(t))
+	s.hurtBuilding(pump.ID, buildingHealth(BuildingPump))
+	Apply(s, MarkBuilding{
+		Kind: BuildingPump, Col: pump.Col, Row: pump.Row,
+	})
+	for range buildingWorkTicks {
+		s.workJob(0)
+	}
+	pile, _ := pileAt(s, pump.Col, pump.Row)
+	pile.Oil, pile.MiteTicks = 20, mitePileLifetimeTicks*0.5
+	s.Piles[pile.ID] = pile
+	scene := newPlayScene(s)
+	gx, gy := projectBuilding(pump)
+	point := scene.camera.ToScreen(golib.Vector2{X: gx, Y: gy})
+	t.Logf("pump position: %.0f,%.0f", point.X, point.Y)
+	data, err := json.MarshalIndent(map[string]any{"state": s}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 

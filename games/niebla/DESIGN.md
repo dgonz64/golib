@@ -202,8 +202,13 @@ over the footprint was the other option and lost: a cell is 25 m across, so
 at any zoom but the closest a scatter reads as noise or as nothing, it
 multiplies entities and cards for no decision the player can take, and one
 pile keeps the state a small table (`State.Piles`, by ID: cell, oil, lilac).
-Until it is emptied a pile holds its cell - nothing can be marked there - and
-robots walk through it as they walk through everything. Mites consume its
+Piles share cells with buildings and sites: marking and raising a replacement
+preserves every loose resource, which robots can still collect. On valid
+ground a pile's card offers `build here`, opening the usual radial menu;
+an oil pool offers `build pump` even while its previous pump's salvage lies
+there. Shared piles draw at the front of their cell, above buildings and
+sites, and remain listed when a pump body is selected. Robots walk
+through them as they walk through everything. Mites consume their
 contents over three minutes at full exposure, slower in the haze and faster
 in a swell.
 
@@ -840,6 +845,12 @@ fast-forward cannot swallow a short-lived shot between updates.
 Landed (2026-09-22), in `audio.go`, all of it view: the world speaks where it happens and the view weighs it. Every world sound is multiplied by how close the view stands (`nearness`: a whisper at stop 0, whole from stop 3, never nothing) and by its distance to the view's middle (a little past the view's width on screen), so far out the world whispers under the wind. The wind loop and the oil pools' buried seethe are synthesized by `tools/soundgen` and read as files (`wind-loop.ogg`, `oil-bed.ogg`), so they loop with no seam; the wind is three layers driven by one long gust - a deep rumble always there, an air that swells with it, a whistle only the strongest gusts sing - so being far out sounds like the atmosphere and not like a fault. the bed lives at the nearest pool with oil left (never a dry one) and drops a bloop (`oil-drip.ogg`) every 5-20 s and a thicker gurgle (`oil-gurgle.ogg`, CC-BY) every 30-70 s, while the lilac veins, the minerals, sparkle: a soft crystal ping, one of three pitches varied by the play, every 0.4-2.5 s at the nearest vein with ore - and the more veins the view hears, the louder and the sooner the next ping, so the shimmer grows with the mineral in earshot. The war's shots are learned the way the lights learn them, by comparing the state's with the ones seen last: the colony's artillery its cannon recording (`artillery-fire.ogg`, CC0), a rival base's gun the filtered, echoing one of the same (`artillery-fire-distant.ogg`), small arms two short reports (`gun-a/b.ogg`, CC0) held to one sound every few ticks, a shell in the last second over the view falls whistling (a falling note made in code, once per shell), and its landing is a wide whump of noise, made in code too. The interface clicks (`click.ogg`, CC0): opening the build menu, picking a group or a blueprint, every card's button, the schematics' badge, calling a squad, the trash can's two presses. Still to come: the fog's own low loop outside bubbles, the repulsor hum, robot blips, a digestion crunch, a construction chime, sirens. Fully playable muted.
 
 ## Tuning
+In `draw.go`, `pileDrawScale` multiplies the pile's wear scale by its icon
+factor, keeping its minimum readable size without growing as it decays.
+`pilePosition` moves a shared pile toward the front corner by 35% of the
+cell side on each ground axis; the saved cell and hauling target stay put.
+Its mites follow that visual position. Loading retains the saved wear.
+
 In `roof_numbers.go`, `roofNumberSpan` 0.6 fits the painted digits within
 60% of the hangar's roof side; `roofNumberOffset` 0.1 moves them toward the
 right, clear of the watch tower. They scale with the building's body.
@@ -1018,7 +1029,19 @@ time) and on leaving the region writes only the active slot. Under
 `state` from `golib shot --save` through `resumeState`. The driver does not
 build for `js/wasm`; web storage remains a later server or browser store.
 
-Demolition and loose items, in `sim_piles.go`: `demolishWorkTicks` 300 (5 s) of a builder's work to take an ordered building down (`Building.Demolish` counts the work left; it goes in only while `canDemolish` holds, so a protector waits where it stands), `demolishRefund` 1.0 (the part of the cost that falls to the ground; a site gives back the same), piles loaded with the deposits' `robotLoadTicks` and carry sizes, one kind per trip, lilac first. A robot never loads what the stores have no free room for, counting what is already on its way home (`freeRoom`), and unloads `storeStandoff` 11 u from its store's middle, spread by ID like the builders. State holds `Piles` (by ID: cell, oil, lilac) and `Robot.Pile` (the pile a loading robot stands at), the actions are `Demolish` (a building's ID: an order a builder works off) and `CancelJob` (a site's cell, at once), `canPlace` refuses a cell with a pile, and the catalog has the `site` and `pile` types, primary on their tile. The robot's day is a list now (`robotDay`), the shape the per-robot task list will filter. In `inspect.go`: the trash can, `trashWidth` by `trashHeight` 11 by 13 px at the end of a card's title, red and under `demolish?` while armed, gone while a building is being taken down.
+Demolition and loose items, in `sim_piles.go`: `demolishWorkTicks` 300 (5 s)
+of a builder's work to take an ordered building down. `Building.Demolish`
+counts the work left; it advances only while `canDemolish` holds.
+`demolishRefund` 1.0 sets the share of the cost dropped; a cancelled site
+gives back the same. Piles use `robotLoadTicks` and role-specific carry sizes,
+one kind per trip, lilac first. `freeRoom` includes incoming cargo, so robots
+never load what cannot fit. Unloading ends `storeStandoff` 11 u from a store.
+`State.Piles` keeps each pile's ID, cell, oil, lilac and mite wear;
+`Robot.Pile` identifies the pile being loaded. `canPlace` allows loose items
+alongside a building or site, preserving their contents. `Demolish` orders
+a building down; `CancelJob` removes a site immediately. In `inspect.go`,
+the 11-by-13 px trash can turns red under `demolish?` when armed and
+disappears while a building is being taken down.
 
 The rivals, in `sim_enemies.go`: every dial is in [The rivals](#the-rivals). The state gained `Enemies`, `Parties`, `Raids` (the visits that were, the tick of the next), `Marks`, `Reports` (the last `reportsKept` 12) and `Rolls`, the counter of the state's own PRNG (`State.roll`, splitmix64 over the seed and the counter), which the rivals are the first to draw from: a visit's bearing. A party moves as one at the pace of its slowest, the members `formationOffset` around its leader (18 m and up, inside the crawler's pocket), and stops `siphonReachUnits` 40 m from its tank. `Building` gained `Reload` and `Aim` for the guard posts; a shot shows `guardFlashTicks` 6. In `enemies.go`: the news stay `reportShowTicks` 900 (15 s) on a plate under the HUD, the mark is `markScale` 1.3 (about 40 m long), vehicles never draw under 5 px across (the crawler 9), and bearings are named as the screen shows them, north up (`compassWord`).
 
@@ -1112,6 +1135,11 @@ all four probe policies.
 
 ## Changelog
 
+- 2026-10-02: rebuilding now preserves loose resources on the same cell,
+  including destroyed-pump salvage. Valid pile cards offer `build here`;
+  shared piles draw in front of structures and remain inspectable and
+  collectable. Fixed pile wear enlarging the drawing instead of shrinking it,
+  with scale and contents preserved across saves.
 - 2026-10-02: painted each war factory's squad number on its hangar roof,
   projected along the roof's isometric axes and matching the squad strip.
 - 2026-10-02: fixed city forces disappearing on an empty-handed return.

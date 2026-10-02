@@ -413,7 +413,7 @@ func (s *playScene) dragCamera(input *golib.Input) {
 }
 
 // updateRadial puts a menu away whose ring went empty while it stood
-// open: a robot walked onto the cell, or a job or pile took it, and an
+// open: a robot walked onto the cell, or a job took it, and an
 // empty ring is no menu. The stores don't empty a ring - what they
 // can't pay stands washed out - so only the ground's answer closes it.
 func (s *playScene) updateRadial() {
@@ -624,7 +624,8 @@ func (s *playScene) rightClicked(input *golib.Input) bool {
 
 // buildableCell reports whether a cell may ask for the build menu:
 // buildable ground, nothing raised, rising or lying there, no robot
-// standing on it.
+// standing on it. Pile clicks inspect their contents; their card can open
+// the build menu without clearing the pile.
 func (s *playScene) buildableCell(col, row int) bool {
 	if !buildableGround(col, row) {
 		return false
@@ -709,6 +710,12 @@ func (s *playScene) pressButton(row tooltipRow) {
 		Apply(s.state, QueueMechanic{Building: thing.Ref})
 	case buttonOrder:
 		s.armOrdering(thing.Ref)
+	case buttonBuildHere:
+		if buildMenuAvailable(s.state, s.pickedCol, s.pickedRow) {
+			s.openRadial(s.pickedCol, s.pickedRow)
+			s.picked = false
+			s.pickedThing = ""
+		}
 	case buttonBuildPump:
 		if d, ok := depositAt(tcol, trow); ok {
 			col, row := pumpCell(d)

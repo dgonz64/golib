@@ -31,6 +31,11 @@ Empty-handed city returns now preserve surviving vehicles for rest or
 replacement, with a notice distinguishing a return from leaving the region.
 Niebla's colony war factories also carry their squad number painted in
 isometric perspective on the hangar roof, matching the squad strip's order.
+Niebla also permits rebuilding over loose resources without deleting them:
+piles share building and site cells, remain collectable and show in front
+of their structures. Their cards offer `build here` on valid ground, and
+oil pools keep `build pump` available over salvage. Pile wear now shrinks
+the drawing correctly instead of enlarging its minimum-size icon factor.
 
 | Area | State |
 | --- | --- |
