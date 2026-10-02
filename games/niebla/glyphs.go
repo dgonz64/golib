@@ -40,7 +40,7 @@ func drawBlueprintIcon(
 	// The body rises from its ground point, so drop that point to have
 	// the body centered on cy rather than standing on it.
 	drawBuilding(screen, kind, cx, cy+height*unitH/2, across, height,
-		iconGunX, iconGunY)
+		iconGunX, iconGunY, 0)
 }
 
 // drawPipeIcon paints a pipe in miniature: the tube the region lifts on

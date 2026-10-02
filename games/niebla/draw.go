@@ -104,6 +104,10 @@ func drawBuildings(s *State, screen *golib.Screen, zoom float32) {
 		core bool
 	}
 	spots := make([]spot, 0, len(s.Buildings)+1)
+	squadNumbers := make(map[int64]int)
+	for i, id := range squadSlots(s) {
+		squadNumbers[id] = i + 1
+	}
 	for _, id := range sortedBuildingIDs(s) {
 		b := s.Buildings[id]
 		_, y := projectBuilding(b)
@@ -122,7 +126,8 @@ func drawBuildings(s *State, screen *golib.Screen, zoom float32) {
 		across, height := buildingSize(b.Kind)
 		k := buildingIcon(across, height, zoom)
 		fx, fy := gunFacing(gx, gy)
-		drawBuilding(screen, b.Kind, gx, gy, across*k, height*k, fx, fy)
+		drawBuilding(screen, b.Kind, gx, gy, across*k, height*k,
+			fx, fy, squadNumbers[b.ID])
 		if part, color, holds := buildingFill(s, b); holds {
 			// Down the middle of the body's left face.
 			x := gx - across*k*unitW/4
@@ -218,7 +223,7 @@ func drawJobs(s *State, screen *golib.Screen, zoom float32) {
 		if done > 0 {
 			fx, fy := gunFacing(gx, gy)
 			drawBuilding(screen, job.Kind, gx, gy,
-				across, height*done, fx, fy)
+				across, height*done, fx, fy, 0)
 		}
 		// The scaffold: the whole body, in wireframe.
 		drawBuildingWireframe(screen, gx, gy, across, height, zoom,
@@ -330,6 +335,7 @@ func drawBuilding(
 	screen *golib.Screen,
 	kind BuildingKind,
 	gx, gy, across, height, fx, fy float32,
+	squadNumber int,
 ) {
 	switch kind {
 	case BuildingFactory:
@@ -384,6 +390,8 @@ func drawBuilding(
 		// A low hangar, a watch tower at its corner and the guard's lamp.
 		isoBox(screen, gx, gy, across, height*0.7,
 			warFactoryColor, mid(warFactoryColor, warFactoryDark), warFactoryDark)
+		drawFactoryRoofNumber(screen, squadNumber, gx, gy-height*0.7*unitH,
+			across)
 		isoBox(screen, gx-across*unitW*0.22, gy-height*unitH*0.1,
 			across*0.24, height*1.5, warFactoryColor, warFactoryDark, warFactoryDark)
 		screen.DrawCircle(gx-across*unitW*0.22, gy-(height*1.6+1)*unitH,

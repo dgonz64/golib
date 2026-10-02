@@ -1021,6 +1021,11 @@ The guard pennant's ground cell also selects as though a building occupied
 it, so a click there does not open the build menu; the pennant icon opens
 the squad card only where no building stands underneath it.
 `drawSquadStrip` paints the squads' boxes at the top right.
+`drawBuildings` derives the same numbering from `squadSlots`, including empty
+factories. `drawFactoryRoofNumber` (`roof_numbers.go`) projects 3x5 bitmap
+digits onto the hangar's roof plane as filled polygons, before the corner
+tower is drawn. Numbers scale with the building and can have multiple digits;
+construction sites and blueprint icons have no squad number.
 
 On the screen (`enemies.go`) the marks lie on the ground under
 everything, and the vehicles are drawn after the fog, so a party reads

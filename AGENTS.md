@@ -29,6 +29,8 @@ On 2026-10-02, Niebla's rival-city vehicles began spawning at their military
 factory, including unit-by-unit assembly, replacements and dev-tool forces.
 Empty-handed city returns now preserve surviving vehicles for rest or
 replacement, with a notice distinguishing a return from leaving the region.
+Niebla's colony war factories also carry their squad number painted in
+isometric perspective on the hangar roof, matching the squad strip's order.
 
 | Area | State |
 | --- | --- |

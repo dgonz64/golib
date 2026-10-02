@@ -161,6 +161,7 @@ var (
 	shotColor       = golib.Color{R: 255, G: 244, B: 210, A: 255}
 	warFactoryColor = golib.Color{R: 132, G: 150, B: 104, A: 255}
 	warFactoryDark  = golib.Color{R: 70, G: 84, B: 54, A: 255}
+	warFactoryInk   = golib.Color{R: 230, G: 226, B: 196, A: 255}
 
 	// A site reads in the scaffold's pale steel, and loose items in the
 	// crates' worn wood.

@@ -461,6 +461,10 @@ static data generated from `State.Seed`, never state. `play.go` and
   - **A store shows how full it is** on its body, in a vertical bar
     filling from the bottom: a silo and charger in oil, a warehouse in
     lilac against all its roofs, and the core in both oil and lilac.
+  - Each completed war factory carries its squad number painted on the
+    hangar roof, in the same oldest-first order as the number keys and squad
+    strip, even before it has troopers. The pale digits follow both axes of
+    the isometric roof and sit beneath the corner watch tower.
   - Resource costs float up above their source: placing buildings or pipes,
     starting unit production, repairs, protector upkeep and weapon fire.
     Recurring costs are totaled once per second in oil amber or lilac violet.
@@ -836,6 +840,10 @@ fast-forward cannot swallow a short-lived shot between updates.
 Landed (2026-09-22), in `audio.go`, all of it view: the world speaks where it happens and the view weighs it. Every world sound is multiplied by how close the view stands (`nearness`: a whisper at stop 0, whole from stop 3, never nothing) and by its distance to the view's middle (a little past the view's width on screen), so far out the world whispers under the wind. The wind loop and the oil pools' buried seethe are synthesized by `tools/soundgen` and read as files (`wind-loop.ogg`, `oil-bed.ogg`), so they loop with no seam; the wind is three layers driven by one long gust - a deep rumble always there, an air that swells with it, a whistle only the strongest gusts sing - so being far out sounds like the atmosphere and not like a fault. the bed lives at the nearest pool with oil left (never a dry one) and drops a bloop (`oil-drip.ogg`) every 5-20 s and a thicker gurgle (`oil-gurgle.ogg`, CC-BY) every 30-70 s, while the lilac veins, the minerals, sparkle: a soft crystal ping, one of three pitches varied by the play, every 0.4-2.5 s at the nearest vein with ore - and the more veins the view hears, the louder and the sooner the next ping, so the shimmer grows with the mineral in earshot. The war's shots are learned the way the lights learn them, by comparing the state's with the ones seen last: the colony's artillery its cannon recording (`artillery-fire.ogg`, CC0), a rival base's gun the filtered, echoing one of the same (`artillery-fire-distant.ogg`), small arms two short reports (`gun-a/b.ogg`, CC0) held to one sound every few ticks, a shell in the last second over the view falls whistling (a falling note made in code, once per shell), and its landing is a wide whump of noise, made in code too. The interface clicks (`click.ogg`, CC0): opening the build menu, picking a group or a blueprint, every card's button, the schematics' badge, calling a squad, the trash can's two presses. Still to come: the fog's own low loop outside bubbles, the repulsor hum, robot blips, a digestion crunch, a construction chime, sirens. Fully playable muted.
 
 ## Tuning
+In `roof_numbers.go`, `roofNumberSpan` 0.6 fits the painted digits within
+60% of the hangar's roof side; `roofNumberOffset` 0.1 moves them toward the
+right, clear of the watch tower. They scale with the building's body.
+
 The top-right squad strip starts at y=12 screen pixels. The robots button
 sits 6 pixels below its 44-pixel boxes at every resolution, at y=62.
 Resource text wraps to the left of these controls.
@@ -1104,6 +1112,8 @@ all four probe policies.
 
 ## Changelog
 
+- 2026-10-02: painted each war factory's squad number on its hangar roof,
+  projected along the roof's isometric axes and matching the squad strip.
 - 2026-10-02: fixed city forces disappearing on an empty-handed return.
   Survivors now unload, rest or replace losses regardless of stolen oil;
   return notices distinguish coming home from leaving the region. The first
