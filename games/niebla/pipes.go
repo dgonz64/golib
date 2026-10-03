@@ -28,6 +28,8 @@ const (
 	flowGapUnits      = 30.0 // u between two bands, close up
 	flowGapPx         = 16.0 // and never closer than this on the screen
 	flowBandMaxPart   = 0.9  // the gap's orange share at pump capacity
+	flowBandMinPart   = 0.15
+	flowBandMinPx     = 4.0
 	flowBeatTicks     = 40
 	flowLitersPerBeat = pumpLitersPerSecond * flowBeatTicks / 60.0
 
@@ -71,8 +73,34 @@ func pipeFlowPhase(moved float64) float64 {
 }
 
 func pipeFlowBandPart(offered float64) float64 {
+	if offered <= 0 {
+		return 0
+	}
 	capacity := pumpLitersPerSecond / 60
-	return flowBandMaxPart * math.Max(0, math.Min(1, offered/capacity))
+	part := flowBandMaxPart * math.Min(1, offered/capacity)
+	return math.Max(flowBandMinPart, part)
+}
+
+func pipeFlowBandEnds(
+	path []PipePoint, along, half float64, zoom float32,
+) (tail, head golib.Vector2) {
+	tail.X, tail.Y = projectPoint(pathPointAt(path, along-half))
+	head.X, head.Y = projectPoint(pathPointAt(path, along+half))
+	span := head.Sub(tail)
+	minimum := float32(flowBandMinPx) / zoom
+	if half > 0 && span.Length() < minimum {
+		if span.Length() == 0 {
+			ax, ay := projectPoint(pathPointAt(path, along-1))
+			bx, by := projectPoint(pathPointAt(path, along+1))
+			span = golib.Vector2{X: bx - ax, Y: by - ay}
+		}
+		x, y := projectPoint(pathPointAt(path, along))
+		center := golib.Vector2{X: x, Y: y}
+		radius := span.Normalize().Scale(minimum / 2)
+		tail = center.Sub(radius)
+		head = center.Add(radius)
+	}
+	return tail, head
 }
 
 // drawPipes paints the pipes, in two passes like the piles: the
@@ -158,11 +186,12 @@ func drawPipes(s *State, screen *golib.Screen, zoom float32, sheltered bool) {
 				continue
 			}
 			half := gap * part / 2
-			tailX, tailY := projectPoint(pathPointAt(path, along-half))
+			tail, head := pipeFlowBandEnds(path, along, half, zoom)
 			x, y := projectPoint(pathPointAt(path, along))
-			headX, headY := projectPoint(pathPointAt(path, along+half))
-			screen.DrawLine(tailX, tailY-lift, x, y-lift, width*0.7, oilColor)
-			screen.DrawLine(x, y-lift, headX, headY-lift, width*0.7, oilColor)
+			screen.DrawLine(tail.X, tail.Y-lift, x, y-lift,
+				width*0.7, oilColor)
+			screen.DrawLine(x, y-lift, head.X, head.Y-lift,
+				width*0.7, oilColor)
 		}
 	}
 }

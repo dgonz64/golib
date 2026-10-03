@@ -16,7 +16,8 @@ const (
 	pumpLitersPerSecond = 2.0 // L/s a pump draws, shared by its pipes
 	pipeLitersPerSecond = 4.0 // L/s one pipe carries at the most
 	// Maximum pipe inflow each tank absorbs before passing excess onward.
-	tankFillPerSecond = 0.8 * pumpLitersPerSecond
+	tankFillPerSecond      = 0.8 * pumpLitersPerSecond
+	protectorFillPerSecond = 0.2 * pumpLitersPerSecond
 
 	pipePorts     = 3 // the pipes a building takes, in and out together
 	corePipePorts = 6 // and the core
@@ -524,7 +525,11 @@ func pipeFlowOrder(
 }
 
 func tankFillCapacity(s *State, id int64) float64 {
-	return math.Min(tankRoom(s, id), tankFillPerSecond/60)
+	rate := tankFillPerSecond
+	if b, ok := s.Buildings[id]; ok && b.Kind == BuildingProtector {
+		rate = protectorFillPerSecond
+	}
+	return math.Min(tankRoom(s, id), rate/60)
 }
 
 // pipeReceiveCapacity includes a tank's fill allowance and the oil its

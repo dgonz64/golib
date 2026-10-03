@@ -249,9 +249,10 @@ each takes `pipePorts` 3 pipes, in and out together (the core
 and mixers were the other option and wait: ports on the buildings that
 already exist ask for no new building, and a silo is already a mixer with a
 buffer. A pipe moves at most `pipeLitersPerSecond` 4 L/s, limited by its
-source and what the network can accept. Every tank takes at most
-`tankFillPerSecond` 1.6 L/s from pipes, shared among all its inlets; this
-is 80% of a pump's `pumpLitersPerSecond` 2 L/s. Incoming oil fills the tank
+source and what the network can accept. Ordinary tanks take at most
+`tankFillPerSecond` 1.6 L/s from pipes; protectors take at most
+`protectorFillPerSecond` 0.4 L/s, 20% of a pump's 2 L/s. Each tank shares
+its limit among all its inlets. Incoming oil fills the tank
 at that rate, and any excess passes through its outlets in the same tick.
 A full tank can pass oil onward without taking more in. If there is no
 outlet with room, the source sends only what the tank can store, so oil is
@@ -259,8 +260,8 @@ not lost. A silo can also feed its outlets from oil already stored in it.
 Robots still unload at their existing rate. A source divides its supply
 equally among outlets that can accept oil: a silo with two open pipes feeds
 both, and a pump divides its supply among its pipes. A
-protector never forwards its stored reserve: while it fills at the shared
-tank rate, it passes only the excess; when full, it retains
+protector never forwards its stored reserve: while it fills at its slower
+rate, it passes only the excess; when full, it retains
 `protectorOilPerSecond` 0.125 L/s to stay powered and shares the surplus
 equally among its outlets. A full protector without an outlet receives
 only its upkeep; nothing is lost.
@@ -278,8 +279,9 @@ band moves by the liters actually transferred, so a sink that accepts less
 slows it and a blocked or dry pipe stays gray. A protector passes only the
 excess beyond its fill rate; once full, it keeps 0.125 L/s for upkeep before
 sharing the rest onward. Each protector in a chain narrows the bands by its
-upkeep. Their phase follows the pipe's accumulated liters and survives
-saves.
+upkeep. Bands keep at least 15% of their gap and four screen pixels so small
+flows remain visible at every camera zoom. Their phase follows the pipe's
+accumulated liters and survives saves.
 Pipes may cross anything, the fog too, and are drawn over it like the sites.
 
 **Taking it up.** The card of either end lists its pipes, each with where it goes or comes from, its length, what it is doing, and a `remove` button; demolishing a building takes its pipes with it. Either way a pipe's whole cost falls as a pile - by the building it started at, or on the demolished cell - and comes home as a haul.
@@ -858,6 +860,19 @@ fast-forward cannot swallow a short-lived shot between updates.
 Landed (2026-09-22), in `audio.go`, all of it view: the world speaks where it happens and the view weighs it. Every world sound is multiplied by how close the view stands (`nearness`: a whisper at stop 0, whole from stop 3, never nothing) and by its distance to the view's middle (a little past the view's width on screen), so far out the world whispers under the wind. The wind loop and the oil pools' buried seethe are synthesized by `tools/soundgen` and read as files (`wind-loop.ogg`, `oil-bed.ogg`), so they loop with no seam; the wind is three layers driven by one long gust - a deep rumble always there, an air that swells with it, a whistle only the strongest gusts sing - so being far out sounds like the atmosphere and not like a fault. the bed lives at the nearest pool with oil left (never a dry one) and drops a bloop (`oil-drip.ogg`) every 5-20 s and a thicker gurgle (`oil-gurgle.ogg`, CC-BY) every 30-70 s, while the lilac veins, the minerals, sparkle: a soft crystal ping, one of three pitches varied by the play, every 0.4-2.5 s at the nearest vein with ore - and the more veins the view hears, the louder and the sooner the next ping, so the shimmer grows with the mineral in earshot. The war's shots are learned the way the lights learn them, by comparing the state's with the ones seen last: the colony's artillery its cannon recording (`artillery-fire.ogg`, CC0), a rival base's gun the filtered, echoing one of the same (`artillery-fire-distant.ogg`), small arms two short reports (`gun-a/b.ogg`, CC0) held to one sound every few ticks, a shell in the last second over the view falls whistling (a falling note made in code, once per shell), and its landing is a wide whump of noise, made in code too. The interface clicks (`click.ogg`, CC0): opening the build menu, picking a group or a blueprint, every card's button, the schematics' badge, calling a squad, the trash can's two presses. Still to come: the fog's own low loop outside bubbles, the repulsor hum, robot blips, a digestion crunch, a construction chime, sirens. Fully playable muted.
 
 ## Tuning
+Oil deposits contain `oilPerRichCell` 140 L per fully rich cell, twice the
+former amount, with extraction still at the same rate. Version 13 saves
+double only known remaining oil once; dry pools stay dry, and missing pools
+start at their new full capacity. Lilac deposits keep their previous yield.
+
+In `sim_pipes.go`, `protectorFillPerSecond` 0.4 L/s leaves a pump-fed chain
+carrying 2.0, 1.6, 1.2, 0.8 and 0.4 L/s through four filling protectors.
+Their upkeep remains 0.125 L/s. Ordinary tanks retain their 1.6 L/s fill
+limit. In `pipes.go`, `flowBandMinPart` 0.15 and `flowBandMinPx` 4 keep small
+positive offers readable. Collapsed projected endpoints use the pipe's local
+direction to draw that minimum. Band movement still follows actual transferred
+oil and stops when flow stops.
+
 In `units.go`, health and worker fuel bars extend their dark background
 one screen pixel beyond the fill on every side, independent of camera zoom.
 Building and rival health bars use the same drawing helper.
@@ -966,7 +981,7 @@ Pump picking, in `inspect.go`: the visible isometric body selects the pump's
 cell. The deposit remains one functional patch, while pump and site cards
 stay local to that cell.
 
-The region is generated from `State.Seed` (`worldgen.go`, its laws tested over 40 seeds in `worldgen_test.go`; `defaultSeed` 0 is a new game's and an old save's). **Relief** comes from wave function collapse over landform blocks (`reliefBlock` 4 cells, 100 m): each block is a wave over `reliefLevels` 4 levels (0 basin, 1 plain, 2 and 3 hills), neighbors - diagonal too - differ by a level at the most, the blocks within `reliefCorePlain` 2.2 tiles of the core are pinned to the plain and `reliefMarks` 16 hilltops and basins are pinned out in the region; then the block with the least left to decide collapses to a level drawn by `reliefWeight` times `reliefAffinity` for each neighbor already at it (the plain's pull, 6, is what leaves the great flats), and what that rules out spreads. The constraint keeps every wave an unbroken run of levels, so the collapse never contradicts. The levels land on the cells' corners after a smooth wander (`reliefWarpCells` 2.6) that takes the blocks' straight edges away; a level is `levelHeight` 4 m, a slope is one level to the cell (16%), a cell with four equal corners is flat, and `canPlace` asks for one: 95% of the ground is. The relief is looks and building ground for now - robots walk it at their one speed. **Cover** is three octaves of noise in zones `zoneWave` 28 cells wide, thicker in the basins, thinner on the slopes. **Deposits** follow `depositPlans`: one pool and one vein whole inside the bubble (hearts 1.7 to 2.4 tiles out, radius 6.5 to 7.5 cells) and two more of each with their hearts 7.2 to 8.4 tiles out (radius 8 to 12 cells), hearts `depositApart` 3.2 tiles apart and on flat ground, where the pump stands and the robots load. A body is a stretched, turned blob (veins 1.55, pools 1.15) whose edge a noise bends, mottled all over and broken into specks toward the rim; each cell has a richness from 0 to 1, and what a deposit holds is its richness times `oilPerRichCell` 70 L or `lilacPerRichCell` 240 kg - about 3 kL and 10 t by the core, up to 10 kL and 30 t far out. A tile belongs to a deposit when it holds `depositTileOre` 0.8 of richness and touches the heart's tile through others that do; the ore on the tiles that don't is dropped, and no two deposits share a tile.
+The region is generated from `State.Seed` (`worldgen.go`, its laws tested over 40 seeds in `worldgen_test.go`; `defaultSeed` 0 is a new game's and an old save's). **Relief** comes from wave function collapse over landform blocks (`reliefBlock` 4 cells, 100 m): each block is a wave over `reliefLevels` 4 levels (0 basin, 1 plain, 2 and 3 hills), neighbors - diagonal too - differ by a level at the most, the blocks within `reliefCorePlain` 2.2 tiles of the core are pinned to the plain and `reliefMarks` 16 hilltops and basins are pinned out in the region; then the block with the least left to decide collapses to a level drawn by `reliefWeight` times `reliefAffinity` for each neighbor already at it (the plain's pull, 6, is what leaves the great flats), and what that rules out spreads. The constraint keeps every wave an unbroken run of levels, so the collapse never contradicts. The levels land on the cells' corners after a smooth wander (`reliefWarpCells` 2.6) that takes the blocks' straight edges away; a level is `levelHeight` 4 m, a slope is one level to the cell (16%), a cell with four equal corners is flat, and `canPlace` asks for one: 95% of the ground is. The relief is looks and building ground for now - robots walk it at their one speed. **Cover** is three octaves of noise in zones `zoneWave` 28 cells wide, thicker in the basins, thinner on the slopes. **Deposits** follow `depositPlans`: one pool and one vein whole inside the bubble (hearts 1.7 to 2.4 tiles out, radius 6.5 to 7.5 cells) and two more of each with their hearts 7.2 to 8.4 tiles out (radius 8 to 12 cells), hearts `depositApart` 3.2 tiles apart and on flat ground, where the pump stands and the robots load. A body is a stretched, turned blob (veins 1.55, pools 1.15) whose edge a noise bends, mottled all over and broken into specks toward the rim; each cell has a richness from 0 to 1, and what a deposit holds is its richness times `oilPerRichCell` 140 L or `lilacPerRichCell` 240 kg - about 6 kL and 10 t by the core, up to 20 kL and 30 t far out. A tile belongs to a deposit when it holds `depositTileOre` 0.8 of richness and touches the heart's tile through others that do; the ore on the tiles that don't is dropped, and no two deposits share a tile.
 
 The world speaks SI: `unitMeters` 1 (one world unit is one meter, in
 `things.go`, so a tile is 200 m across, 4 ha); the core is a monolith in
@@ -1154,6 +1169,14 @@ all four probe policies.
 - **Text and translations:** all in-game text is English. Strings move to `assets/text/<lang>.json` (one flat key-to-string file per language, read once with `golib.ReadAsset`) when the first text-heavy screens land; the language is a player setting, not part of the simulation state.
 
 ## Changelog
+- 2026-10-03: reinforced low-flow pipe bands to at least 15% of each gap
+  and four screen pixels, including bands whose projected ends coincide.
+  Checked three full protectors ending without an outlet: network demand
+  limits flow to 0.375, 0.250 and 0.125 L/s, with each retaining only upkeep.
+- 2026-10-03: doubled oil-deposit reserves and migrated remaining oil in old
+  saves once. Slowed protector pipe filling from 1.6 to 0.4 L/s so chains
+  pass oil farther while charging; low-flow bands now stay at least two
+  screen pixels long at every camera zoom.
 - 2026-10-03: Health and fuel bars gained a one-screen-pixel dark border
   for clearer contrast against the world, including at full fuel.
 

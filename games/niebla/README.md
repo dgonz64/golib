@@ -382,7 +382,7 @@ NIEBLA_CITY_CONSTRUCTION_SHOT_STATE=../../build/niebla/construction.json \
 | `play.go` | The play scene: input to actions plus one `Tick` per update (more while the dev tools fast forward); camera, selection, open cards, robot roster, individual assignment and pointer modes live here, never serialized; unit cards follow a directly selected robot or rival vehicle, squad cards follow their pennant on free ground or target ring; a guard pennant on a building selects the building, and its cell selects instead of opening the build menu; the schematics callout and one-use building placement mode, rivals' HUD, reach overlays, floating cost numbers and autosave are view state too |
 | `radial.go` | The build menu: the two rings a click on empty ground opens - the build groups (industry, military, logistics), then the group's blueprints - laid out around the cell every frame, and `backRadial`/`closeRadial`/`openRadial` for the scene |
 | `glyphs.go` | The marks the build menu wears: a group's own glyph, a blueprint's body in miniature - the very `drawBuilding` the region draws, scaled into the menu's circle, so one graphic serves both - and the pipe's mark, the tube the region lifts on posts |
-| `state.go` | The simulation's state and save-schema version 12: builders, workers, troopers, mechanics and rivals with saved hull, facing and stillness ticks; builders keep site, demolition or pipe-section reservations; rival-city crawler reconstruction and refounding timers; active older city forces gain a crawler when they lack antimist; the first scout's saved core-bubble crossing tick; buildings, jobs, piles and pipes with mite wear; stock, deposits, weather and rival tables; one-tick unit, building-death and resource-cost receipts feed view effects without being saved; `newGame` gives the colony one fueled builder |
+| `state.go` | The simulation's state and save-schema version 13: builders, workers, troopers, mechanics and rivals with saved hull, facing and stillness ticks; builders keep site, demolition or pipe-section reservations; rival-city crawler reconstruction and refounding timers; active older city forces gain a crawler when they lack antimist; the first scout's saved core-bubble crossing tick; buildings, jobs, piles and pipes with mite wear; stock, deposits, weather and rival tables; migration doubles remaining oil-deposit reserves once; one-tick unit, building-death and resource-cost receipts feed view effects without being saved; `newGame` gives the colony one fueled builder |
 | `costs.go` | Transient resource-cost receipts from placement, production, repairs, upkeep and weapons; never saved |
 | `actions.go` | The actions (`Tick`, `SendRobot`, ID-specific `AssignRobot` and `RecallRobot`, `MarkBuilding`, typed `QueueRobot`, `QueueMechanic`, `Demolish`, `CancelJob`, `LayPipe`, `RemovePipe`, `AckTech`, the dev tools' city and visit actions, and `OrderSquad`) and `Apply`, the only door into the state |
 | `sim_robots.go` | The robots' rules and tuning: `robotDay`, common priorities, builders working their reserved tasks, workers mining posts, builders and unassigned workers collecting piles, oil-pool waits under fog, stationary hull damage and tank wear, `postRobots` and worker-only `pickRobot`, movement and idle ranks |
@@ -390,7 +390,7 @@ NIEBLA_CITY_CONSTRUCTION_SHOT_STATE=../../build/niebla/construction.json \
 | `sim_piles.go` | Demolition, unit wrecks and loose items: `canDemolish`, the 25% unit recovery (`dropRobotWreck`), the piles (`dropPile`, `pileOffer`, `nearestPile`, `takeFromPile`), the stores' free room and `storeSpot`, where a load is unloaded |
 | `sim_buildings.go` | The buildings' rules and tuning: blueprints' costs, placement and safe zones, protector upkeep, storage, refueling and production eligibility for builders, workers, troopers and mechanics; `canQueueUnit` is shared by the cards and queue action |
 | `sim_oil.go` | Oil's spendable tanks and dedicated protector reserves: `oilTotal`, `oilCap`, `payOil`, all physical tank capacity, and `haulTank` and `refuelTank`, where a robot carries oil to and refills from |
-| `sim_pipes.go` | Pumps and pipes: the `Pipe`, its curve (`pipePath`, a centripetal Catmull-Rom spline through the bends), sections and cost, `canJoin` and the ports, the sections' remaining work, `stepPipes` and `pumpStatus`; fog-covered oil pools stop pumps without losing oil, protectors clear them, tanks fill from pipes at a shared 1.6 L/s limit and pass excess onward, while protectors keep their reserve and upkeep; each pipe records offered, moved and cumulative liters for the view |
+| `sim_pipes.go` | Pumps and pipes: the `Pipe`, its curve (`pipePath`, a centripetal Catmull-Rom spline through the bends), sections and cost, `canJoin` and the ports, the sections' remaining work, `stepPipes` and `pumpStatus`; fog-covered oil pools stop pumps without losing oil, protectors clear them, ordinary tanks fill at 1.6 L/s and protectors at 0.4 L/s, shared across inlets, passing excess onward; protectors keep their reserve and upkeep; each pipe records offered, moved and cumulative liters for the view |
 | `sim_fog.go` | The fog's law and tuning: cycles, swells, local exposure (`fogExposureAt`), oil pools covered outside bubbles, where the line stands now (`fogLineNow`), and the drag a walker keeps (`fogDrag`) |
 | `sim_enemies.go` | The rivals' timing and movement: `Enemy` with its saved facing octant and mite-stillness ticks, `Party`, `Raids`, `Mark` and `Report`; the one-minute scout and follow-up clocks, the first no-camp attack, raider growth by visit up to four, city arrivals, party stages, siphoning and return, the first scout's saved outward crossing tick of the core bubble, mite damage and wrecks, guard posts whose shots report oil costs, the shared 130 m small-arms reach, repair-protocol battle markers and legacy trigger migration |
 | `sim_cities.go` | Rival cities: serializable production, crawler-first replacement, sequential rebuilding and refounding, constructors driving to each job before 45 seconds of on-site work, small constructor and site antimist bubbles, 30-second sortie-vehicle steps, finite local oil/mineral reserves, city arrival and old-save migration, city battalions assembled one vehicle at a time to five before artillery replaces the crawler, antimist replacement, unloading, 90-second rests and squad replacement; records the pressure city's first sortie |
@@ -467,7 +467,7 @@ robot-sized form:
   and projectiles.
   The ground itself is generated from `State.Seed` and never enters the
   state. It has no pointers, channels or functions, so it serializes as it
-  is. `State.Version` 11 migrates saves: legacy `core` units become fueled
+  is. `State.Version` 13 migrates saves: legacy `core` units become fueled
   builders, `built` units become workers, factories keep their selected
   product while it is in progress, builders and workers receive their
   initial hull, active city forces infer composition from survivors, and
@@ -665,7 +665,8 @@ or another is free, so robots with nothing to build go on with their day.
 `stepPipes` runs after the factories, in source-to-destination order. A
 source divides its available oil equally among laid outlets that can
 accept it; each pipe carries up to `pipeLitersPerSecond`. Every tank takes
-at most `tankFillPerSecond` 1.6 L/s from pipes, shared across its inlets.
+at most `tankFillPerSecond` 1.6 L/s from pipes, except protectors, whose
+`protectorFillPerSecond` limit is 0.4 L/s. Each limit is shared across inlets.
 The tank stores what fits within that rate and passes excess through its
 outlets in the same tick; a full tank can pass oil without storing it.
 When no outlet can accept the excess, the source is throttled to the
@@ -683,10 +684,20 @@ it, `Pipe.Flow` the liters actually moved in the latest tick, and
 `Pipe.Moved` the total moved since it started flowing. These are saved
 state, so saves and replays keep the animation deterministic. The view
 colors each band by `Offered`: 2 L/s fills 90% of the gap, leaving 10%
-steel gray. Its phase follows `Moved`, so a destination that accepts less
+steel gray. Positive offers keep at least `flowBandMinPart` 15% of the gap
+and `flowBandMinPx` four screen pixels at every zoom. When very small bands
+project to coinciding endpoints, the local pipe direction restores the minimum.
+Their phase follows `Moved`, so a destination that accepts less
 slows the band without a phase jump, and a blocked or dry pipe stays gray.
 Each full protector subtracts its upkeep from the offer to the next link;
 the sixteenth pipe in a chain gets 0.125 L/s, and the seventeenth gets none.
+Four filling protectors leave 2.0, 1.6, 1.2, 0.8 and 0.4 L/s flowing through
+the successive links instead of consuming the whole pump offer by the second
+protector. Protector reserves remain private even if the pump runs dry.
+Pass-through capacity adds to a tank's own fill capacity. A chain ending in
+a full protector without an outlet is throttled to the combined upkeep:
+three full protectors carry 0.375, 0.250 and 0.125 L/s through their inlets,
+not the pump's full 2 L/s. Their orange bands remain visible at those rates.
 `Demolish` calls `takePipesOf`, so a pipe never outlives an end.
 
 To compare those two flow rates in consecutive shots:
@@ -699,9 +710,31 @@ NIEBLA_PIPE_FLOW_SHOT_STATE=../../build/niebla/pipe-flow.json \
   --input "Enter@1 Mouse@2:640,360 MouseWheel@3:2" --scale 2
 ```
 
-The saved region shows a pump feeding a silo at full output and the core
-feeding a full protector at its upkeep rate. The shots zoom in on both
-pipes; the protector's bands cover one eighth the distance over 40 updates.
+The saved region shows a pump feeding a silo with its full source offer and
+the core feeding a full protector at its upkeep rate. The shots zoom in on both
+pipes; the protector's bands move much more slowly over the same 40 updates.
+
+To inspect that gradual flow through four filling protectors and into a silo:
+
+```text
+NIEBLA_PIPE_CHAIN_SHOT_STATE=../../build/niebla/pipe-chain.json \
+  ./golib go -C games/niebla test \
+  -run TestFillingProtectorsLeaveGradualDownstreamFlow
+./golib shot niebla 20 40 60 \
+  --save build/niebla/pipe-chain.json \
+  --input "Enter@1 Mouse@2:640,360 MouseWheel@3:3"
+```
+
+To inspect three full protectors with the last one's upkeep limiting the flow:
+
+```text
+NIEBLA_LOW_FLOW_SHOT_STATE=../../build/niebla/low-flow.json \
+  ./golib go -C games/niebla test \
+  -run TestTerminalProtectorThrottlesOnlyToNetworkDemand
+./golib shot niebla 60 300 \
+  --save build/niebla/low-flow.json \
+  --input "Enter@1 Mouse@2:640,360 MouseWheel@3:2"
+```
 
 The laying mode is view (`pipeLaying` in the scene): it collects bends
 and sends one `LayPipe` (`sendPipe`) on the click that lands on a tank
@@ -1165,9 +1198,12 @@ is 200 m across (4 ha) and the region 5 km from side to side, the core's
 monolith is 16 by 4 m and 36 m tall, and its bubble radius is 800 m. Oil is
 liters, lilac is kilograms (`si` turns 12000 kg into `12.0 t`, so nobody
 ever reads `kkg`). A deposit holds its cells' richness times the ore's
-density (`oilPerRichCell` 70 L, `lilacPerRichCell` 240 kg, in
-`worldgen.go`): about 3 kL and 10 t by the core, up to three times that
+density (`oilPerRichCell` 140 L, `lilacPerRichCell` 240 kg, in
+`worldgen.go`): about 6 kL and 10 t by the core, up to three times that
 far out.
+Save version 13 doubles known remaining oil once, preserving depletion
+fractions. Dry pools stay dry, missing deposits start full, and lilac yields
+are unchanged.
 Robots are fast rovers with small arms (30 m/s, 30 L or 20 kg a trip), so
 a worked deposit shows a constant coming and going. Amounts live at the
 top of `things.go`.

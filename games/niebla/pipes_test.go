@@ -630,7 +630,7 @@ func TestPipeFlowAnimationFollowsDestinationDemand(t *testing.T) {
 		protector := raised(t, s, BuildingProtector, col, row)
 		p := layNow(t, s, pump.ID, protector.ID)
 
-		if !tickUntil(s, 60*180, func() bool {
+		if !tickUntil(s, 60*600, func() bool {
 			return s.Buildings[protector.ID].Oil >= protectorOilCap-0.01
 		}) {
 			t.Fatal("the protector never filled without an outlet")
@@ -684,6 +684,15 @@ func TestPipeFlowBandsTrackTheSourceOffer(t *testing.T) {
 	if got := pipeFlowBandPart(-pumpLitersPerSecond / 60); got != 0 {
 		t.Errorf("a negative offer colors %v of the gap", got)
 	}
+	for _, offer := range []float64{protectorOilPerSecond / 60, 1e-12} {
+		if got := pipeFlowBandPart(offer); got != flowBandMinPart {
+			t.Errorf("a low offer colors %v of the gap, want %v",
+				got, flowBandMinPart)
+		}
+	}
+	if got := pipeFlowBandPart(0); got != 0 {
+		t.Errorf("a stopped pipe colors %v of the gap", got)
+	}
 }
 
 func TestProtectorFillsAtItsRateAndPassesExcess(t *testing.T) {
@@ -703,13 +712,13 @@ func TestProtectorFillsAtItsRateAndPassesExcess(t *testing.T) {
 
 	runTicks(s, 60*60)
 	wantOil := initialOil +
-		(tankFillPerSecond-protectorOilPerSecond)*60
+		(protectorFillPerSecond-protectorOilPerSecond)*60
 	if math.Abs(s.Buildings[protector.ID].Oil-wantOil) > 1e-6 {
 		t.Errorf("the protector holds %v L, want %v after one minute",
 			s.Buildings[protector.ID].Oil, wantOil)
 	}
 	got, want := s.Pipes[outPipe.ID].Flow*60,
-		pumpLitersPerSecond-tankFillPerSecond
+		pumpLitersPerSecond-protectorFillPerSecond
 	if math.Abs(got-want) > 1e-8 {
 		t.Fatalf("the filling protector passed %v L/s, want %v", got, want)
 	}
@@ -717,12 +726,12 @@ func TestProtectorFillsAtItsRateAndPassesExcess(t *testing.T) {
 		t.Fatal("the passing excess did not reach the second silo")
 	}
 	got, want = s.Pipes[tailPipe.ID].Flow*60,
-		pumpLitersPerSecond-tankFillPerSecond
+		pumpLitersPerSecond-protectorFillPerSecond
 	if math.Abs(got-want) > 1e-8 {
 		t.Errorf("the second silo received %v L/s, want %v", got, want)
 	}
 
-	if !tickUntil(s, 60*200, func() bool {
+	if !tickUntil(s, 60*600, func() bool {
 		return s.Buildings[protector.ID].Oil >= protectorOilCap-0.01
 	}) {
 		t.Fatal("the protector never filled its reserve")
@@ -810,6 +819,146 @@ func TestProtectorChainConsumesUpkeepBeforeEachOutlet(t *testing.T) {
 					flowBandMaxPart*wantOffer/pumpLitersPerSecond,
 			) > 1e-8 {
 			t.Errorf("pipe %d's band does not follow its thinning offer", i+1)
+		}
+	}
+}
+
+func TestFillingProtectorsLeaveGradualDownstreamFlow(t *testing.T) {
+	s := newGame()
+	seedStock(s)
+	arriveAll(s)
+	noRivals(s)
+	d := safePool(t)
+	pump := pumpOn(t, s, d)
+	col, row := groundNearCore()
+	protectors := make([]Building, 4)
+	from := pump.ID
+	var pipes []Pipe
+	for i := range protectors {
+		protectors[i] = raised(
+			t, s, BuildingProtector, col+i*4, row,
+		)
+		pipes = append(pipes, layNow(t, s, from, protectors[i].ID))
+		from = protectors[i].ID
+	}
+	silo := raised(t, s, BuildingSilo, col+16, row)
+	pipes = append(pipes, layNow(t, s, from, silo.ID))
+	before := allOilTotal(s) + s.Drain[depositKey(d)]
+	runTicks(s, 60*60)
+	for i, p := range pipes {
+		want := 2.0 - float64(i)*0.4
+		p = s.Pipes[p.ID]
+		if math.Abs(p.Flow*60-want) > 1e-8 {
+			t.Errorf("link %d carries %v L/s, want %v", i+1, p.Flow*60, want)
+		}
+		if p.Offered <= 0 || pipeFlowBandPart(p.Offered) <= 0 {
+			t.Errorf("link %d has no visible flow band", i+1)
+		}
+	}
+	for _, b := range protectors {
+		want := protectorCostOil + (0.4-protectorOilPerSecond)*60
+		if oil := s.Buildings[b.ID].Oil; math.Abs(oil-want) > 1e-8 {
+			t.Errorf("protector %d holds %v L, want %v", b.ID, oil, want)
+		}
+	}
+	want := before - float64(len(protectors))*protectorOilPerSecond*60
+	if got := allOilTotal(s) + s.Drain[depositKey(d)]; math.Abs(got-want) > 1e-6 {
+		t.Errorf("the network keeps %v L including the pool, want %v", got, want)
+	}
+	if path := os.Getenv("NIEBLA_PIPE_CHAIN_SHOT_STATE"); path != "" {
+		data, err := json.MarshalIndent(map[string]any{"state": s}, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.Drain[depositKey(d)] = 0
+	stored := s.Buildings[silo.ID].Oil
+	runTicks(s, 120)
+	if oil := s.Buildings[silo.ID].Oil; oil != stored {
+		t.Fatalf("the dry pump's chain drained protector reserves into the silo")
+	}
+	for _, p := range pipes {
+		if s.Pipes[p.ID].Flow != 0 {
+			t.Errorf("link %d still flows after the pool runs dry", p.ID)
+		}
+	}
+}
+
+func TestSmallPipeFlowBandsStayVisibleAtEveryZoom(t *testing.T) {
+	x, y := cellCenterUnits(coreCol*8, coreRow*8)
+	for _, end := range []PipePoint{
+		{x + 100, y}, {x, y + 100}, {x + 100, y + 100},
+	} {
+		path := []PipePoint{{x, y}, end}
+		for _, zoom := range []float32{1, 2, 4, 8, 16, 32} {
+			for _, half := range []float64{0.001, 1e-12} {
+				for _, along := range []float64{0, 30, pathLength(path)} {
+					tail, head := pipeFlowBandEnds(path, along, half, zoom)
+					pixels := head.Distance(tail) * zoom
+					if math.Abs(float64(pixels)-flowBandMinPx) > 0.01 {
+						t.Errorf("half %v along %v at zoom %v spans %v px",
+							half, along, zoom, pixels)
+					}
+				}
+			}
+			tail, head := pipeFlowBandEnds(path, 30, 0, zoom)
+			if tail != head {
+				t.Errorf("a zero-length band at zoom %v gained visible length", zoom)
+			}
+			tail, head = pipeFlowBandEnds(path, 50, 40, zoom)
+			ax, ay := projectPoint(pathPointAt(path, 10))
+			bx, by := projectPoint(pathPointAt(path, 90))
+			if tail != (golib.Vector2{X: ax, Y: ay}) ||
+				head != (golib.Vector2{X: bx, Y: by}) {
+				t.Errorf("a readable band at zoom %v changed length", zoom)
+			}
+		}
+	}
+}
+
+func TestTerminalProtectorThrottlesOnlyToNetworkDemand(t *testing.T) {
+	s := newGame()
+	seedStock(s)
+	arriveAll(s)
+	noRivals(s)
+	d := safePool(t)
+	pump := pumpOn(t, s, d)
+	col, row := groundNearCore()
+	from := pump.ID
+	var pipes []Pipe
+	for i := range 3 {
+		b := raised(t, s, BuildingProtector, col+i*8, row)
+		b.Oil = protectorOilCap - protectorOilPerSecond/60
+		s.Buildings[b.ID] = b
+		pipes = append(pipes, layNow(t, s, from, b.ID))
+		from = b.ID
+	}
+	pool := s.Drain[depositKey(d)]
+	runTicks(s, 120)
+	for i, p := range pipes {
+		want := float64(len(pipes)-i) * protectorOilPerSecond
+		if got := s.Pipes[p.ID].Flow * 60; math.Abs(got-want) > 1e-8 {
+			t.Errorf("link %d carries %v L/s, want %v", i+1, got, want)
+		}
+		if oil := s.Buildings[p.To].Oil; oil < protectorOilCap-0.01 {
+			t.Errorf("protector %d did not keep its reserve full", p.To)
+		}
+	}
+	want := float64(len(pipes)) * protectorOilPerSecond * 2
+	if got := pool - s.Drain[depositKey(d)]; math.Abs(got-want) > 1e-8 {
+		t.Errorf("the pool lost %v L, want only the network's %v L upkeep",
+			got, want)
+	}
+	if path := os.Getenv("NIEBLA_LOW_FLOW_SHOT_STATE"); path != "" {
+		data, err := json.MarshalIndent(map[string]any{"state": s}, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
@@ -1330,6 +1479,8 @@ func TestWritePipeFlowShotStates(t *testing.T) {
 	protector := raised(
 		t, s, BuildingProtector, coreCellCol+20, coreCellRow,
 	)
+	protector.Oil = protectorOilCap
+	s.Buildings[protector.ID] = protector
 	pumpPipe := layNow(t, s, pump.ID, silo.ID)
 	protectorPipe := layNow(t, s, coreTank, protector.ID)
 	runTicks(s, 60*100)

@@ -263,12 +263,49 @@ func TestBuildingsAskForFlatGround(t *testing.T) {
 
 func TestAnOldSaveWakesUpWithFullDeposits(t *testing.T) {
 	s := newGame()
+	s.Version = 12
 	s.Drain = map[string]float64{"5,6": 12}
 	s.enterRegion()
 	for _, d := range land.deposits {
 		if s.Drain[depositKey(d)] != d.Full {
 			t.Errorf("deposit %d woke up holding %v, want %v",
 				d.Index, s.Drain[depositKey(d)], d.Full)
+		}
+	}
+}
+
+func TestOldSavesDoubleOnlyRemainingOilOnce(t *testing.T) {
+	for _, seed := range []int64{0, 1, 2} {
+		s := newGameOn(seed)
+		s.Version = 12
+		want := map[string]float64{}
+		oilIndex := 0
+		for _, d := range land.deposits {
+			key := depositKey(d)
+			s.Drain[key] = d.Full / 4
+			want[key] = s.Drain[key]
+			if d.Kind != kindOil {
+				continue
+			}
+			switch oilIndex {
+			case 0:
+				want[key] *= 2
+			case 1:
+				s.Drain[key], want[key] = 0, 0
+			case 2:
+				delete(s.Drain, key)
+				want[key] = d.Full
+			}
+			oilIndex++
+		}
+		for range 2 {
+			s.enterRegion()
+			for key, amount := range want {
+				if got := s.Drain[key]; got != amount {
+					t.Errorf("seed %d deposit %s has %v, want %v",
+						seed, key, got, amount)
+				}
+			}
 		}
 	}
 }

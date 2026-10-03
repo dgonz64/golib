@@ -103,7 +103,7 @@ func (s *State) recordRivalBuildingDeath(e Enemy) {
 	})
 }
 
-const stateVersion = 12
+const stateVersion = 13
 
 // Fog is the region's weather, where the fog's breath has got to. The
 // swell rises at a cycle's end and drains tick by tick; NextIn counts
@@ -408,6 +408,14 @@ func (s *State) migrateState() {
 	}
 	if s.Version < 12 {
 		s.migrateCityCrawlerConstruction()
+	}
+	if s.Version < 13 {
+		for _, d := range land.deposits {
+			key := depositKey(d)
+			if remaining, known := s.Drain[key]; known && d.Kind == kindOil {
+				s.Drain[key] = remaining * 2
+			}
+		}
 	}
 	s.Version = stateVersion
 }

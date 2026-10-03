@@ -41,7 +41,7 @@ var (
 // heart and thinning out to specks at its rim; what it holds is its
 // richness times the ore's density.
 const (
-	oilPerRichCell   = 70  // liters in a cell of richness 1
+	oilPerRichCell   = 140 // liters in a cell of richness 1
 	lilacPerRichCell = 240 // kilograms
 
 	depositTileOre  = 0.8 // richness a tile needs to belong to a deposit

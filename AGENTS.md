@@ -12,6 +12,11 @@ The promise: someone downloads the template, runs a couple of commands, and buil
 
 Keep this section true: update it in the same change that lands or removes a feature. Never describe planned work as if it existed.
 
+On 2026-10-03, Niebla's oil deposits doubled their reserves, including remaining
+oil in older saves. Protectors now fill from pipes at 0.4 L/s, passing more
+oil along a filling chain. Low-flow bands now keep at least 15% of each gap
+and four screen pixels, including when projected endpoints collapse together.
+
 On 2026-10-03, Niebla's health and worker fuel bars gained a one-screen-pixel
 dark border on every side, kept at that thickness across camera zoom levels.
 
