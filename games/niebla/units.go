@@ -70,13 +70,13 @@ func drawRobots(
 			drawUnitBar(screen, golib.Rectangle{
 				X: p.X - radius, Y: statusY,
 				Width: 2 * radius, Height: 2 / zoom,
-			}, r.Health/maxHealth, healthColor)
+			}, zoom, r.Health/maxHealth, healthColor)
 		}
 		if r.Kind == RobotWorker {
 			drawUnitBar(screen, golib.Rectangle{
 				X: p.X - radius, Y: statusY + 4/zoom,
 				Width: 2 * radius, Height: 2 / zoom,
-			}, r.Tank/robotTankLiters, oilColor)
+			}, zoom, r.Tank/robotTankLiters, oilColor)
 		}
 	}
 }
@@ -84,10 +84,14 @@ func drawRobots(
 // drawUnitBar paints one status bar under a unit: the dark well first,
 // then the fill, as wide as part of the whole bar is.
 func drawUnitBar(
-	screen *golib.Screen, bar golib.Rectangle, part float64,
+	screen *golib.Screen, bar golib.Rectangle, zoom float32, part float64,
 	color golib.Color,
 ) {
-	screen.DrawRectangle(bar, fillBarColor)
+	border := 1 / zoom
+	screen.DrawRectangle(golib.Rectangle{
+		X: bar.X - border, Y: bar.Y - border,
+		Width: bar.Width + 2*border, Height: bar.Height + 2*border,
+	}, fillBarColor)
 	bar.Width *= float32(math.Max(0, part))
 	screen.DrawRectangle(bar, color)
 }

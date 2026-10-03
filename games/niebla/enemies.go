@@ -198,9 +198,7 @@ func drawHealthBar(
 	bar := golib.Rectangle{
 		X: gx - w/2, Y: gy + across*unitH/2 + 2/zoom, Width: w, Height: 2 / zoom,
 	}
-	screen.DrawRectangle(bar, fillBarColor)
-	bar.Width *= float32(math.Max(0, health) / full)
-	screen.DrawRectangle(bar, color)
+	drawUnitBar(screen, bar, zoom, health/full, color)
 }
 
 // drawVehicle paints a rival rover pointing along its last movement.

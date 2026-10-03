@@ -12,6 +12,9 @@ The promise: someone downloads the template, runs a couple of commands, and buil
 
 Keep this section true: update it in the same change that lands or removes a feature. Never describe planned work as if it existed.
 
+On 2026-10-03, Niebla's health and worker fuel bars gained a one-screen-pixel
+dark border on every side, kept at that thickness across camera zoom levels.
+
 On 2026-10-03, Niebla's resident city constructor began driving to each
 building and rebuilding job, working for 45 seconds only after arrival.
 It carries a 40 m antimist bubble; city construction sites have their own
