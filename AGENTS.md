@@ -12,6 +12,12 @@ The promise: someone downloads the template, runs a couple of commands, and buil
 
 Keep this section true: update it in the same change that lands or removes a feature. Never describe planned work as if it existed.
 
+On 2026-10-03, Niebla's resident city constructor began driving to each
+building and rebuilding job, working for 45 seconds only after arrival.
+It carries a 40 m antimist bubble; city construction sites have their own
+30 m bubble, keeping unfinished structures free of fog and mites during
+travel and constructor replacement.
+
 Last updated: 2026-10-01 (the punctuation keys, `golib.KeyComma` and the rest, as places on the keyboard); before it, 2026-09-30 (the window's monitor, size and frame rate, `golib.DisplayScale`, `golib.FPS` and `golib.OpenURL`, for a game's graphics settings; `Config.FillWindow`, a screen that takes the window's shape, with no black bars; on Linux and macOS, `build` and `shot` work while `run` has the game open); before it, 2026-09-29 (gamepad prompts, `golib.PlayingWithGamepad` and `Input.GamepadType`; typed text, `Input.TypedText`; milestones M5, Shipping, and M6, 2D essentials, done; Linux and macOS ran GoLib for the first time; the web build is at stage 4, phones, after a game published on itch.io was played on one; M7, 3D, comes after it).
 
 On 2026-10-01, `Config.WindowScale` and `Config.OnScreenResize` added a

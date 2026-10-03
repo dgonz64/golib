@@ -84,6 +84,7 @@ func TestCityFactoryCompletionAndSortiesDoNotUnlockArtillery(t *testing.T) {
 	}
 	city.Work = 1
 	s.Cities[city.ID] = city
+	placeCityCrawlerAtWork(s, city)
 	stepCity(s, &city)
 	s.Cities[city.ID] = city
 	if city.Stage != len(cityBuildOrder) ||

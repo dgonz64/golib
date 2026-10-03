@@ -82,7 +82,10 @@ func enemySpecOf(kind EnemyKind) enemySpec {
 	case EnemyArtillery:
 		return enemySpec{12, 240, 170, 0, 10, 35, 0, 0, 0}
 	case EnemyCityCrawler:
-		return enemySpec{0, 300, 0, 0, 10, 25, 0, 0, 0}
+		return enemySpec{
+			cityCrawlerSpeed, 300, cityCrawlerBubbleUnits,
+			0, 10, 25, 0, 0, 0,
+		}
 	case EnemyCityRepulsor:
 		return enemySpec{0, 300, 170, 0, 0, 0, 0, 0, 0}
 	case EnemyCityOilworks, EnemyCityMine:
@@ -456,14 +459,12 @@ func stepParty(s *State, p Party) {
 			coreX, coreY := tileCenterUnits(coreCol, coreRow)
 			angle := math.Atan2(crawler.Y-coreY, crawler.X-coreX)
 			cityID := s.foundCityFromCrawler(crawler, angle, p.City)
-			city := s.Cities[cityID]
 			crawler.Kind = EnemyCityCrawler
 			crawler.Party, crawler.City = 0, cityID
-			crawler.X, crawler.Y = cityCrawlerPosition(city)
 			crawler.Health = enemySpecOf(EnemyCityCrawler).health
 			s.Enemies[crawler.ID] = crawler
 			delete(s.Parties, p.ID)
-			s.report(ReportSettled, 0, city.X, city.Y)
+			s.report(ReportSettled, 0, crawler.X, crawler.Y)
 			s.Raids.NextAt = s.Ticks + int64(cityIntervalCycles)*fogCycleTicks
 			return
 		}

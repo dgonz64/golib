@@ -120,6 +120,9 @@ func drawCityConstruction(s *State, screen *golib.Screen, zoom float32) {
 			continue
 		}
 		gx, gy := project(float32(x), float32(y))
+		ellipseOutline(screen, gx, gy,
+			float32(citySiteBubbleUnits/unitsPerTile), 1/zoom,
+			enemyEdgeColor)
 		gray := golib.Color{R: 158, G: 169, B: 172, A: 255}
 		w := dotRadius(11, zoom, 5)
 		screen.DrawCircleOutline(gx, gy, w, 1/zoom, gray)

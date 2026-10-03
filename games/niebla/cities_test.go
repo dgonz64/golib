@@ -51,6 +51,7 @@ func assertCityBuildsPylonBeforeNexus(
 		cityHasBuilding(s, *city, EnemyBase) {
 		t.Fatalf("city did not start with the pylon: %+v", *city)
 	}
+	placeCityCrawlerAtWork(s, *city)
 	for range cityBuildTicks - 1 {
 		stepCity(s, city)
 	}
@@ -63,6 +64,7 @@ func assertCityBuildsPylonBeforeNexus(
 		!cityHasRepulsor(s, *city) || cityHasBuilding(s, *city, EnemyBase) {
 		t.Fatalf("the Nexus appeared before the pylon was built: %+v", *city)
 	}
+	placeCityCrawlerAtWork(s, *city)
 	for range cityBuildTicks - 1 {
 		stepCity(s, city)
 	}
@@ -126,10 +128,14 @@ func TestAResidentCrawlerArrivesBeforeTheCityBuilds(t *testing.T) {
 		city.NexusID == 0 ||
 		s.Enemies[city.NexusID].ID != 0 ||
 		s.Enemies[city.BuildingIDs[0]].Kind != EnemyCityCrawler ||
-		enemySpecOf(EnemyCityCrawler).bubble != 0 ||
+		enemySpecOf(EnemyCityCrawler).bubble != cityCrawlerBubbleUnits ||
 		cityHasBuilding(s, city, EnemyBase) ||
 		distance <= artilleryRangeUnits {
 		t.Fatalf("crawler settled as city %+v at %.0f m", city, distance)
+	}
+	crawler := s.Enemies[city.BuildingIDs[0]]
+	if math.Hypot(crawler.X-city.X, crawler.Y-city.Y) > 1e-9 {
+		t.Fatal("the arriving constructor jumped away from its founding site")
 	}
 	Apply(s, Tick{})
 	if len(s.Cities) != 1 {
@@ -195,6 +201,7 @@ func TestCityRebuildsMissingBuildingsBeforeResumingProduction(t *testing.T) {
 
 	city.Work = 1
 	s.Cities[cityID] = city
+	placeCityCrawlerAtWork(s, city)
 	stepCity(s, &city)
 	s.Cities[cityID] = city
 	stage, building = cityNextBuildingStage(s, city)
@@ -1340,12 +1347,9 @@ func TestWriteCityConstructionShotState(t *testing.T) {
 			"a city construction state")
 	}
 	s := newGame()
+	noRivals(s)
 	cityID := s.foundCity(4500, 2500, 0)
 	city := s.Cities[cityID]
-	for range 3 {
-		s.finishCityBuilding(&city)
-	}
-	city.Work = cityBuildTicks / 2
 	s.Cities[cityID] = city
 	data, err := json.MarshalIndent(map[string]any{"state": s}, "", "  ")
 	if err != nil {

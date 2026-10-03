@@ -26,6 +26,13 @@ func insideEnemyRepulsor(s *State, x, y float64) bool {
 			return true
 		}
 	}
+	for _, id := range sortedCityIDs(s) {
+		city := s.Cities[id]
+		sx, sy, _, _, building := cityConstructionSite(s, city)
+		if building && math.Hypot(sx-x, sy-y) <= citySiteBubbleUnits {
+			return true
+		}
+	}
 	return false
 }
 

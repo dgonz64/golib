@@ -112,13 +112,16 @@ When a host is gone, its swarm closes on the empty spot and fades.
 The simulation shares one damage rate across all units: after two stationary
 seconds, hull falls at 2 points/s at full exposure, half that in the haze,
 and twice that in a full swell. Buildings and sites take the same health
-damage without a stillness grace. A colony site is canceled into salvage; a
-rival city site repeats its current 45-second building step if consumed. Piles
-lose oil and lilac over three minutes
+damage without a stillness grace. A colony site is canceled into salvage.
+Piles lose oil and lilac over three minutes
 at full exposure; the clock slows with exposure and speeds up with swell
 pressure. Laid pipe sections contribute to their pipe's damage only where
 exposed; an exhausted pipe disappears. Active repulsor bubbles stop mites.
 The core has no mite host and is never changed by this system.
+
+Rival city sites carry a small antimist bubble throughout construction,
+including travel and constructor replacement, so they neither wear nor show
+mites. Completed city structures rely on the city's pylon or a nearby vehicle.
 
 **Mites** is the official name, the one a manual would print. The people who
 live with them call them something that can't be printed - the working
@@ -330,11 +333,15 @@ target in the HUD until its construction queue is clear.
 The arrival crawler stays as the city's construction vehicle, in a subdued
 red-gray distinct from the military units. The Nexus ID is reserved at
 founding, but its entity appears only after the antimist pylon is built. The
-crawler has no repulsor of its own; the pylon covers it and the rest of the
-city. The extractor, lilac mine and military factory follow the Nexus, each a
-gray rival structure with health and a `cityBuildTicks` 45 s build. Five
-structures take 3 min 45 s of uninterrupted construction. Oil and lilac are
-finite city-local reserves (`cityOilReserve` 900 L and `cityLilacReserve`
+crawler carries a small 40 m repulsor bubble and drives to each building,
+standing 24 m from its center while working. Each city construction site has
+its own 30 m bubble, keeping the unfinished structure clear of fog and mites
+even while the constructor travels or is being replaced. The pylon covers
+the completed city. The extractor, lilac mine and military factory follow
+the Nexus, each a gray rival structure with health and a `cityBuildTicks`
+45 s build. Five structures take 3 min 45 s of on-site construction, plus
+driving time. Oil and lilac are finite city-local reserves
+(`cityOilReserve` 900 L and `cityLilacReserve`
 1800 kg). The extractors add to city stores; the factory spends them on
 sorties. City buildings never fire.
 
@@ -355,6 +362,12 @@ crawler sets out to found the same city's replacement at a site at least
 location stays reserved until the crawler settles; the new base starts with
 its original reserves and build order. Saves keep this wait and the crawler's
 route deterministic.
+
+Driving time never advances the building's work timer. The crawler follows
+the first missing structure in founding order, including after destruction,
+and changes its facing as it moves. Arriving crawlers keep their arrival
+position instead of jumping to a parking spot. Position, facing and remaining
+work survive saves; a loaded constructor resumes its route from there.
 
 Once the factory and stores are ready, the city builds its next battalion
 one vehicle at a time, taking `cityUnitBuildTicks` 30 s per vehicle and
@@ -928,6 +941,9 @@ from the state's tick), `techCalloutW` is 280 px and `techUsedVeil` is
 In `sim_cities.go`, `cityBuildTicks` is 2700 ticks (45 s) per building,
 `cityUnitBuildTicks` is 1800 ticks (30 s) per vehicle and
 `citySortieCooldownTicks` is 5400 ticks (90 s) after a full force returns.
+`cityCrawlerSpeed` is 12 m/s, `cityCrawlerBubbleUnits` is 40 m,
+`citySiteBubbleUnits` is 30 m and `cityBuildStandoffUnits` is 24 m.
+The work timer advances only at the rotated stand-by position of each job.
 Vehicle spawn positions use the military factory's rotated city-layout
 position plus the existing formation offsets.
 `cityAnnouncementTicks` is 3600 ticks (one minute); the city
@@ -1135,6 +1151,10 @@ all four probe policies.
 
 ## Changelog
 
+- 2026-10-03: city constructors now drive to every construction or rebuilding
+  job before starting its 45 seconds of work, keeping arrival and saved
+  positions. Constructors carry a 40 m antimist bubble and city sites a 30 m
+  bubble, leaving unfinished structures free of fog, mite wear and swarms.
 - 2026-10-02: rebuilding now preserves loose resources on the same cell,
   including destroyed-pump salvage. Valid pile cards offer `build here`;
   shared piles draw in front of structures and remain inspectable and

@@ -176,34 +176,53 @@ func TestExposedBuildingsAndSitesTakeTheSharedMiteDamage(t *testing.T) {
 	}
 }
 
-func TestExposedRivalCityConstructionSiteWearsAndShowsMites(t *testing.T) {
+func TestRivalCityConstructionBubbleStopsWearAndMites(t *testing.T) {
 	s := newGame()
 	noRivals(s)
 	id := s.foundCity(500, 500, 0)
-	stepMiteCitySiteWear(s)
 	city := s.Cities[id]
-	want := miteDamagePerSecond / 60
-	if math.Abs(city.MiteDamage-want) > 1e-9 {
-		t.Fatalf("the exposed city site took %v damage, want %v",
-			city.MiteDamage, want)
+	x, y, _, _, building := cityConstructionSite(s, city)
+	if !building || miteExposureAt(s, x, y) != 0 {
+		t.Fatal("the first city site is not sheltered during travel")
+	}
+	if miteExposureAt(s, x+citySiteBubbleUnits+1, y) <= 0 {
+		t.Fatal("the site's bubble clears ground beyond its small radius")
+	}
+	siteDisc := liftedDisc(x, y, citySiteBubbleUnits)
+	crawler := s.Enemies[cityCrawlerID(s, city)]
+	crawlerDisc := liftedDisc(crawler.X, crawler.Y, cityCrawlerBubbleUnits)
+	var siteClear, crawlerClear bool
+	for _, bubble := range clearDiscs(s) {
+		siteClear = siteClear || bubble == siteDisc
+		crawlerClear = crawlerClear || bubble == crawlerDisc
+	}
+	if !siteClear || !crawlerClear {
+		t.Fatal("the site's or constructor's bubble is missing from visual fog")
+	}
+	stepMiteCitySiteWear(s)
+	if s.Cities[id].MiteDamage != 0 {
+		t.Fatal("the sheltered city site took mite damage")
 	}
 
 	field := newMiteField()
 	field.update(s, 1.0/60)
-	if host := field.hosts[citySiteMiteKey(id)]; host == nil || host.Wanted == 0 {
-		t.Fatal("the exposed city construction site has no visible mites")
+	if host := field.hosts[citySiteMiteKey(id)]; host != nil {
+		t.Fatal("the sheltered city site has a mite swarm")
 	}
-	stage, building := cityNextBuildingStage(s, city)
-	if !building {
-		t.Fatal("the city has no construction stage under way")
+	if host := field.hosts[enemyMiteKey(cityCrawlerID(s, city))]; host != nil {
+		t.Fatal("the constructor has a mite swarm under its own bubble")
 	}
-	spec := cityBuildingSpec(cityBuildOrder[stage])
-	city.MiteDamage = spec.health - want/2
-	city.Work = 1
+
+	s.finishCityBuilding(&city)
 	s.Cities[id] = city
+	s.killEnemy(cityCrawlerID(s, city))
+	x, y, _, _, building = cityConstructionSite(s, s.Cities[id])
+	if !building || miteExposureAt(s, x, y) != 0 {
+		t.Fatal("the replacement constructor site has no antimist bubble")
+	}
 	stepMiteCitySiteWear(s)
-	if got := s.Cities[id]; got.Work != cityBuildTicks || got.MiteDamage != 0 {
-		t.Fatalf("consumed city work resumed as %+v", got)
+	if s.Cities[id].MiteDamage != 0 {
+		t.Fatal("the replacement constructor site took mite damage")
 	}
 }
 

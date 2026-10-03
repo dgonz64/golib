@@ -55,6 +55,13 @@ func clearDiscs(s *State) []disc {
 				liftedDisc(e.X, e.Y, reach))
 		}
 	}
+	for _, id := range sortedCityIDs(s) {
+		city := s.Cities[id]
+		x, y, _, _, building := cityConstructionSite(s, city)
+		if building {
+			discs = append(discs, liftedDisc(x, y, citySiteBubbleUnits))
+		}
+	}
 	return discs
 }
 

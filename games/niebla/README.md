@@ -358,6 +358,18 @@ NIEBLA_CITY_REFOUNDING_SHOT_STATE=../../build/niebla/city-refounding.json \
   --input "Enter@1"
 ```
 
+To watch a city constructor drive toward its first pylon and work beside it
+with small antimist bubbles on both the vehicle and the site:
+
+```text
+NIEBLA_CITY_CONSTRUCTION_SHOT_STATE=../../build/niebla/construction.json \
+  ./golib go -C games/niebla test \
+  -run TestWriteCityConstructionShotState
+./golib shot niebla 60 400 800 \
+  --save build/niebla/construction.json \
+  --input "Enter@1 Mouse@3:880,492 MouseWheel@4:3"
+```
+
 ## Files
 
 | File | Holds |
@@ -381,7 +393,7 @@ NIEBLA_CITY_REFOUNDING_SHOT_STATE=../../build/niebla/city-refounding.json \
 | `sim_pipes.go` | Pumps and pipes: the `Pipe`, its curve (`pipePath`, a centripetal Catmull-Rom spline through the bends), sections and cost, `canJoin` and the ports, the sections' remaining work, `stepPipes` and `pumpStatus`; fog-covered oil pools stop pumps without losing oil, protectors clear them, tanks fill from pipes at a shared 1.6 L/s limit and pass excess onward, while protectors keep their reserve and upkeep; each pipe records offered, moved and cumulative liters for the view |
 | `sim_fog.go` | The fog's law and tuning: cycles, swells, local exposure (`fogExposureAt`), oil pools covered outside bubbles, where the line stands now (`fogLineNow`), and the drag a walker keeps (`fogDrag`) |
 | `sim_enemies.go` | The rivals' timing and movement: `Enemy` with its saved facing octant and mite-stillness ticks, `Party`, `Raids`, `Mark` and `Report`; the one-minute scout and follow-up clocks, the first no-camp attack, raider growth by visit up to four, city arrivals, party stages, siphoning and return, the first scout's saved outward crossing tick of the core bubble, mite damage and wrecks, guard posts whose shots report oil costs, the shared 130 m small-arms reach, repair-protocol battle markers and legacy trigger migration |
-| `sim_cities.go` | Rival cities: serializable production, crawler-first replacement, sequential rebuilding and refounding, construction-site mite damage, deterministic 45-second crawler and building steps and 30-second sortie-vehicle steps, finite local oil/mineral reserves, city arrival and old-save migration, city battalions assembled one vehicle at a time to five before artillery replaces the crawler, antimist replacement, unloading, 90-second rests and squad replacement; records the pressure city's first sortie |
+| `sim_cities.go` | Rival cities: serializable production, crawler-first replacement, sequential rebuilding and refounding, constructors driving to each job before 45 seconds of on-site work, small constructor and site antimist bubbles, 30-second sortie-vehicle steps, finite local oil/mineral reserves, city arrival and old-save migration, city battalions assembled one vehicle at a time to five before artillery replaces the crawler, antimist replacement, unloading, 90-second rests and squad replacement; records the pressure city's first sortie |
 | `sim_tech.go` | The schematics: the robot factory is the opening drop, first delivery unlocks infrastructure, the guard post follows the first scout's return past the core bubble, and the frontier kit follows one minute after that crossing (old saves keep the 5:30 trigger); the war factory follows the first-city founding; artillery follows three ended normal attacks (old saves keep the rival-factory trigger); the repair protocol waits for rival building damage and a city-force lull (minute 12 if no first force is produced); `stepTech`, `kindUnlocked`, `dropArrived` and `techPending` derive arrivals and `State.Tech` keeps which drops were opened |
 | `sim_squads.go` | The military units' law and tuning: troopers (`RobotCombat`) and mechanics (`RobotRepair`), the `Squad` and its orders (`squadOf`, `stepSquads`), a trooper's line of the day (`stepSquad`) and its gun (`shoot`), which reports ammunition oil costs, the shared 130 m small-arms reach, the war factory's capacity (`squadRoom`, `mechanicRoom`), and rivals targeting defenders (`stepEnemyGuns`) |
 | `squads.go` | The squads on the screen: the number keys that call one (`squadSlots`, 1 the oldest war factory), the boxes at the top right with a trooper icon, unit count and key (`drawSquadStrip`, `drawTrooperIcon`, `squadBoxRect`, `squadBoxAt`), selection of the pennant or target ring with priority for a building under a guard pennant (`pickSquadMark`, `selectSquad`, `squadMarkAt`, `squadMarkScreen`), guard-pennant cell hit-testing (`squadPennantInCell`), the pointer's mode that gives an order (`updateOrdering`, `enemyUnder`), the pennant and the ring (`drawSquadMarks`) and `squadWords` for the cards |
@@ -434,9 +446,10 @@ NIEBLA_CITY_REFOUNDING_SHOT_STATE=../../build/niebla/city-refounding.json \
 | `pipes_test.go` | Pumps and pipes driven directly: oil-pool fog stops robot loading and pump flow without draining the pool, a protector restores extraction, exposed pumps wear down unless sheltered, laid pipe sections wear in exposed air, pipes are paid and laid by sections, robots claim one section each, tanks share their pipe-fill limit across inlets and pass excess through a chain, protectors keep their reserve and upkeep, source outlets share flow, blocked tanks throttle pumps, bands show offered versus actual flow, pipes move oil between tanks, workers haul and refuel, illegal pipe actions are refused, pipe removal drops its cost as a pile, curves follow bends, and saves resume deterministically; can write a pump/protector flow fixture with `NIEBLA_PIPE_FLOW_SHOT_STATE` |
 | `protector_test.go` | Protector fuel: upkeep drains its dedicated tank, radius fades below the configured threshold and vanishes empty, robots and pipes refill it, the reserve stays unavailable to other costs, old saves migrate once with starting charge, and an opt-in state fixture supports visual shots |
 | `mites_test.go` | The mites' view without a window: volume and exposure counts, doubled still and swell swarms, half strength in haze, the red halo, orbit, trail, fade and falloff |
-| `sim_mites_test.go` | Mite simulation rules: the same stationary unit damage across roles and rivals, no damage while moving, doubled swell damage, charged pylon immunity, colony and rival site wear, reduced city particle counts, pile lifetime, and exposed pipe wear |
+| `sim_mites_test.go` | Mite simulation rules: the same stationary unit damage across roles and rivals, no damage while moving, doubled swell damage, charged pylon immunity, colony site wear, sheltered city sites and constructors, reduced city particle counts, pile lifetime, and exposed pipe wear |
 | `dev_test.go` | The dev actions: a held swell stays up and doesn't count, a placed robot is built, rival camp/regroup/rebuild waits can be hurried, the city tool buttons have separate hit boxes, `unitsAtWorld` undoes `project` |
 | `cities_test.go` | City founding beyond artillery range and on the scout's bearing, 45-second building steps, pylon-first construction, finite local economy, unit-by-unit 30-second sortie assembly and replacement, unloading/reuse, the full-squad rest, destroyed-force rebuild timing, dev actions, replay and JSON persistence |
+| `city_construction_test.go` | Constructor travel before work on every city building, on-site build timing, rebuilding routes, facing and saved travel |
 | `fog_test.go` | The fog driven directly: cycles, swell timing, line and bubble margin, pushed-band drag, stationary wear by exposure and swell, movement and bubble resets, saved wear and the HUD forecast |
 | `identity_test.go` | The identity derived from a machine ID: stable, distinct, and the parsers of what `reg query`, `ioreg` and the machine-id files say |
 | `store_test.go` | The database driven directly: an identity kept across runs, the fallback one too, the token column waiting empty, a base saved and loaded back whole, a second save replacing the first, one player's save invisible to another, the DB path's rules |
@@ -921,9 +934,10 @@ buildings and sites. Depleted protectors are vulnerable; charged protectors
 are not. A pile's `MiteTicks` advances by local exposure and swell pressure
 until three minutes at full exposure, shrinking its oil and lilac to nothing.
 Laid pipe sections contribute damage in proportion to the exposed part of
-their length; a pipe disappears at ordinary building health. An exposed rival
-city construction site also wears down; if consumed, its current 45-second
-building step starts over. The core has no mite host and is not part of this
+their length; a pipe disappears at ordinary building health. Rival city
+construction sites have their own 30 m antimist bubble, so they remain free
+of mite damage and swarms while the constructor travels or is replaced.
+The core has no mite host and is not part of this
 system.
 
 The city progression (`sim_cities.go`) is stored in each `City`: stage,
@@ -932,7 +946,16 @@ crawler and structure IDs, next production tick and completed sorties. The
 first city starts on the scout's bearing at the second attack; its crawler
 is the initial constructor. Later crawlers arrive from the region edge.
 Every city builds a pylon first, then a Nexus, oil extractor, lilac mine and
-war factory. Each step takes `cityBuildTicks`; completed structures are
+war factory. The constructor drives at `cityCrawlerSpeed` 12 m/s to a
+rotated stand-by position `cityBuildStandoffUnits` 24 m from each building.
+Only after arrival does its `cityBuildTicks` work timer advance. Travel is
+added to each 45-second building step, including reconstruction. Its own
+`cityCrawlerBubbleUnits` 40 m bubble shelters the vehicle and nearby work;
+`citySiteBubbleUnits` 30 m keeps each active site clear during travel and
+constructor replacement. Both simulation exposure and visual mist use these
+circles. No new saved fields are needed: position, facing and work already
+serialize. Arriving city crawlers retain their position rather than jumping
+to the parking spot. Completed structures are
 city-owned `Enemy` records. The resident crawler is required for construction,
 extraction and sorties. If destroyed while a structure remains, it takes a
 full 45-second build to replace before any missing structure; with no

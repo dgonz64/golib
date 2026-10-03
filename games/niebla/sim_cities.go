@@ -19,6 +19,10 @@ const (
 	cityRefoundDelayTicks   = 60 * 60
 	citySortieCooldownTicks = 90 * 60
 	cityUnloadPerSecond     = siphonLitersPerSecond
+	cityCrawlerSpeed        = 12.0
+	cityCrawlerBubbleUnits  = 40.0
+	citySiteBubbleUnits     = 30.0
+	cityBuildStandoffUnits  = 24.0
 )
 
 type City struct {
@@ -331,7 +335,12 @@ func stepCity(s *State, city *City) {
 		}
 		return
 	}
-	if _, building := cityNextBuildingStage(s, *city); building {
+	if stage, building := cityNextBuildingStage(s, *city); building {
+		crawler := s.Enemies[cityCrawlerID(s, *city)]
+		x, y := cityCrawlerWorkPosition(*city, stage)
+		if !s.driveParty([]Enemy{crawler}, x, y) {
+			return
+		}
 		city.Work--
 		if city.Work <= 0 {
 			s.finishCityBuilding(city)
@@ -801,6 +810,12 @@ func cityBuildingPosition(city City, stage int) (float64, float64) {
 
 func cityCrawlerPosition(city City) (float64, float64) {
 	return cityOffset(city, 0, 150)
+}
+
+func cityCrawlerWorkPosition(city City, stage int) (float64, float64) {
+	x, y := cityBuildingPosition(city, stage)
+	return x - math.Sin(city.Angle)*cityBuildStandoffUnits,
+		y + math.Cos(city.Angle)*cityBuildStandoffUnits
 }
 
 func cityOffset(city City, dx, dy float64) (float64, float64) {
